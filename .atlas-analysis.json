@@ -1,0 +1,145 @@
+{
+  "projectType": "saas",
+  "projectName": "DRAIT Mini-MES",
+  "projectDescription": "Web-based manufacturing execution system for metalworking and welding shops with production tracking, work order management, and traceability.",
+  "theme": "linden",
+  "primaryColor": "#1e40af",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "system-overview"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/owner-guide",
+              "guides/supervisor-guide",
+              "guides/operator-guide"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/roles-permissions",
+              "concepts/workflow",
+              "concepts/data-model"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Features",
+        "groups": [
+          {
+            "group": "Modules",
+            "pages": [
+              "features/clients",
+              "features/quotations",
+              "features/work-orders",
+              "features/resources",
+              "features/materials",
+              "features/reports",
+              "features/audit"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "features/dashboard",
+              "features/dispatch-center",
+              "features/operator-view"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "deployment/installation",
+              "deployment/docker-setup",
+              "deployment/environment-variables"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "deployment/security",
+              "deployment/database",
+              "deployment/production-checklist"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/auth",
+              "api/users",
+              "api/clients",
+              "api/quotations",
+              "api/work-orders",
+              "api/resources",
+              "api/materials",
+              "api/reports",
+              "api/audit-logs"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Role-based access control (Owner, Supervisor, Operator, Admin)",
+    "Complete quotation to work order workflow",
+    "Real-time production tracking and event logging",
+    "Material consumption and inventory management",
+    "Resource allocation (human and machine)",
+    "Dashboard with KPIs and productivity reports",
+    "Comprehensive audit trail",
+    "Docker-based on-premise deployment"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/login",
+    "GET /api/auth/me",
+    "GET /api/clients",
+    "POST /api/clients",
+    "GET /api/quotations",
+    "POST /api/quotations",
+    "PATCH /api/quotations/:id/status",
+    "GET /api/work-orders",
+    "POST /api/work-orders",
+    "POST /api/work-orders/from-quotation/:quotationId",
+    "PATCH /api/work-orders/:id/status",
+    "POST /api/work-orders/:id/events",
+    "POST /api/work-orders/:id/consumptions",
+    "GET /api/resources",
+    "GET /api/materials",
+    "POST /api/materials/:id/adjust-stock",
+    "GET /api/reports/dashboard",
+    "GET /api/reports/productivity",
+    "GET /api/audit-logs"
+  ]
+}
