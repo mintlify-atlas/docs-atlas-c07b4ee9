@@ -1,0 +1,72 @@
+---
+title: "Introduction"
+description: "DRAIT Mini-MES is a web-based manufacturing execution system for metalworking and welding shops"
+---
+
+## What is DRAIT Mini-MES?
+
+DRAIT Mini-MES is a modular manufacturing execution system (MES) designed specifically for metalworking and welding shops. It provides complete production tracking, work order management, and traceability in a ready-to-deploy Docker-based solution for on-premise installation.
+
+<CardGroup cols={2}>
+  <Card title="Production Tracking" icon="chart-mixed">
+    Real-time visibility into shop floor operations with event logging and progress tracking
+  </Card>
+  <Card title="Work Order Management" icon="clipboard-check">
+    Complete lifecycle from quotation to delivery with status tracking and assignment
+  </Card>
+  <Card title="Material Management" icon="warehouse">
+    Inventory control with consumption tracking and automated stock adjustments
+  </Card>
+  <Card title="Resource Planning" icon="calendar-days">
+    Allocate operators and machines to jobs efficiently
+  </Card>
+</CardGroup>
+
+## Key Benefits
+
+<AccordionGroup>
+  <Accordion title="Complete Traceability">
+    Every operation is logged with timestamp, user, and event details. Track material consumption, work order progress, and operator activities throughout the production lifecycle.
+  </Accordion>
+  
+  <Accordion title="Role-Based Access Control">
+    Four distinct roles (Owner, Supervisor, Operator, Admin) with tailored interfaces and permissions ensure users see only what they need.
+  </Accordion>
+  
+  <Accordion title="On-Premise Deployment">
+    Deploy with Docker Compose on your own infrastructure. No external dependencies, complete data ownership, and works offline.
+  </Accordion>
+  
+  <Accordion title="Ready-to-Use">
+    Includes demo data, pre-configured workflows, and user manuals for owners, supervisors, and operators.
+  </Accordion>
+</AccordionGroup>
+
+## Technology Stack
+
+DRAIT Mini-MES is built with modern, proven technologies:
+
+- **Frontend**: React 18 + TypeScript + Vite + TanStack Query + Recharts
+- **Backend**: NestJS + TypeScript + Prisma ORM + JWT authentication
+- **Database**: PostgreSQL 16
+- **Infrastructure**: Docker + Docker Compose + Nginx reverse proxy
+
+## Use Cases
+
+DRAIT Mini-MES is ideal for:
+
+- **Small to medium metalworking shops** that need to move from spreadsheets to a real system
+- **Welding shops** tracking multiple concurrent jobs with material consumption
+- **Custom fabrication businesses** managing quotations and converting them to work orders
+- **Workshops** requiring audit trails and compliance reporting
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="play" href="/quickstart">
+    Deploy DRAIT in 5 minutes and explore with demo data
+  </Card>
+  <Card title="System Overview" icon="sitemap" href="/system-overview">
+    Learn about the architecture and workflow
+  </Card>
+</CardGroup>

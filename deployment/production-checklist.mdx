@@ -1,0 +1,440 @@
+---
+title: 'Production Deployment Checklist'
+description: 'Comprehensive pre-deployment checklist for DRAIT Mini-MES production environments'
+icon: 'clipboard-check'
+---
+
+## Overview
+
+This checklist ensures your DRAIT Mini-MES deployment is secure, performant, and production-ready. Complete all items before launching to production.
+
+## Pre-Deployment Checklist
+
+### Environment Configuration
+
+- [ ] **Set `NODE_ENV=production`**
+  ```bash
+  NODE_ENV=production
+  ```
+
+- [ ] **Generate strong JWT secret** (minimum 48 bytes)
+  ```bash
+  # Generate and set in .env
+  JWT_SECRET=$(openssl rand -base64 48)
+  ```
+  <Warning>
+    The application will refuse to start if `JWT_SECRET` contains weak values: `change_this_secret`, `secret`, `changeme`, or `jwt_secret`.
+  </Warning>
+
+- [ ] **Configure JWT expiration** appropriately for your use case
+  ```bash
+  JWT_EXPIRES_IN=8h  # Adjust based on security requirements
+  ```
+
+- [ ] **Set production CORS origin**
+  ```bash
+  CORS_ORIGIN=https://yourdomain.com
+  ```
+
+- [ ] **Use strong database credentials**
+  ```bash
+  POSTGRES_PASSWORD=$(openssl rand -base64 24)
+  POSTGRES_USER=drait_prod_user
+  POSTGRES_DB=drait_mes_prod
+  ```
+
+- [ ] **Configure database URL with SSL**
+  ```bash
+  DATABASE_URL="postgresql://user:pass@host:5432/db?schema=public&sslmode=require"
+  ```
+
+- [ ] **Set correct timezone**
+  ```bash
+  TZ=America/Buenos_Aires  # Or your timezone
+  ```
+
+### Security Hardening
+
+- [ ] **Change all default seed credentials**
+  - Delete or change: `owner@drait.local`, `supervisor@drait.local`, etc.
+  - Update passwords from default `ChangeMe123!`
+
+- [ ] **Review password requirements**
+  - Current minimum: 6 characters (`apps/backend/src/modules/auth/dto/login.dto.ts:8`)
+  - Recommended: Increase to 12+ characters with complexity requirements
+
+- [ ] **Enable HTTPS with valid SSL certificates**
+  - Use Let's Encrypt or commercial CA
+  - Configure HSTS headers
+  - Redirect HTTP to HTTPS
+
+- [ ] **Configure firewall rules**
+  - Restrict PostgreSQL port (5432) to backend only
+  - Allow HTTPS (443) and HTTP (80 for redirect) only
+  - Block direct backend access (port 3000) from public
+
+- [ ] **Review rate limiting configuration**
+  - Global: 20 requests/minute (`apps/backend/src/app.module.ts:26`)
+  - Login: 5 requests/minute (`apps/backend/src/modules/auth/auth.controller.ts:21`)
+  - Consider adding reverse proxy rate limiting (nginx/CloudFlare)
+
+- [ ] **Install security headers** (helmet)
+  ```bash
+  cd apps/backend
+  npm install helmet
+  ```
+  ```typescript
+  import helmet from 'helmet';
+  app.use(helmet());
+  ```
+
+- [ ] **Verify input validation is enabled**
+  - Check `ValidationPipe` configuration in `apps/backend/src/main.ts:28-34`
+  - Ensures `whitelist: true` and `forbidNonWhitelisted: true`
+
+### Database Preparation
+
+- [ ] **Run database migrations**
+  ```bash
+  cd apps/backend
+  npm run prisma:generate
+  npm run prisma:migrate
+  ```
+
+- [ ] **Verify database backups are configured**
+  - Test backup script
+  - Verify backup retention policy
+  - Test restore procedure
+  - Schedule automated backups (cron/systemd timer)
+
+- [ ] **Enable PostgreSQL SSL connections**
+  - Configure `sslmode=require` in `DATABASE_URL`
+  - Generate and install SSL certificates
+
+- [ ] **Optimize database performance**
+  - Review connection pool size
+  - Run `VACUUM ANALYZE`
+  - Verify indexes are created
+
+- [ ] **Test database connection from backend**
+  ```bash
+  docker exec drait-backend node -e "require('./dist/src/prisma/prisma.service').PrismaService.prototype.\$connect().then(() => console.log('OK'))"
+  ```
+
+### Application Build
+
+- [ ] **Build backend with production optimizations**
+  ```bash
+  cd apps/backend
+  npm run build
+  ```
+
+- [ ] **Build frontend with production config**
+  ```bash
+  cd apps/frontend
+  npm run build
+  ```
+
+- [ ] **Verify Prisma client generation**
+  ```bash
+  cd apps/backend
+  npm run prisma:generate
+  ```
+
+- [ ] **Test production build locally**
+  ```bash
+  cd apps/backend
+  npm run start:prod
+  ```
+
+### Docker Configuration
+
+- [ ] **Review Dockerfile security**
+  - Uses `node:20-slim` base image
+  - Non-root user configured
+  - Minimal image layers
+
+- [ ] **Configure Docker resource limits**
+  ```yaml
+  services:
+    drait-backend:
+      deploy:
+        resources:
+          limits:
+            cpus: '1.0'
+            memory: 1G
+  ```
+
+- [ ] **Set restart policies**
+  ```yaml
+  restart: unless-stopped
+  ```
+
+- [ ] **Configure health checks**
+  - Backend: `apps/backend/src/main.ts` exposes `/api/auth/status`
+  - Database: pg_isready check configured
+
+- [ ] **Use named volumes for persistence**
+  ```yaml
+  volumes:
+    - postgres_data:/var/lib/postgresql/data
+  ```
+
+### Nginx/Reverse Proxy
+
+- [ ] **Configure SSL/TLS termination**
+  ```nginx
+  listen 443 ssl http2;
+  ssl_certificate /etc/ssl/certs/yourdomain.crt;
+  ssl_certificate_key /etc/ssl/private/yourdomain.key;
+  ```
+
+- [ ] **Set security headers**
+  ```nginx
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-XSS-Protection "1; mode=block" always;
+  ```
+
+- [ ] **Configure rate limiting**
+  ```nginx
+  limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+  limit_req zone=api burst=20 nodelay;
+  ```
+
+- [ ] **Set proxy headers**
+  ```nginx
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  ```
+
+- [ ] **Enable gzip compression**
+  ```nginx
+  gzip on;
+  gzip_types text/plain text/css application/json application/javascript;
+  ```
+
+### Monitoring and Logging
+
+- [ ] **Configure application logging**
+  - Review log levels (set to `error` or `warn` in production)
+  - Set up log rotation
+  - Configure centralized logging (if applicable)
+
+- [ ] **Set up database monitoring**
+  - Monitor connection count
+  - Track query performance
+  - Set up disk space alerts
+
+- [ ] **Configure health check monitoring**
+  - Monitor `/api/auth/status` endpoint
+  - Set up uptime monitoring (UptimeRobot, Pingdom, etc.)
+  - Configure alerting for downtime
+
+- [ ] **Enable audit logging**
+  - Verify `AuditService` is logging critical events
+  - Review audit log retention policy
+  - Set up log analysis tools
+
+- [ ] **Set up error tracking** (optional)
+  - Sentry, Rollbar, or similar
+  - Configure error notifications
+
+### Performance Optimization
+
+- [ ] **Configure CDN for static assets** (optional)
+  - Frontend build artifacts
+  - Images and documents
+
+- [ ] **Enable database query optimization**
+  - Review slow query logs
+  - Add indexes where needed
+  - Configure connection pooling
+
+- [ ] **Set up caching** (if needed)
+  - Redis for session storage
+  - API response caching
+
+- [ ] **Test load performance**
+  - Run load tests with expected traffic
+  - Verify response times meet SLA
+  - Check resource utilization under load
+
+### Backup and Disaster Recovery
+
+- [ ] **Document backup procedures**
+  - Database backup schedule
+  - Backup storage location
+  - Retention policy
+
+- [ ] **Test restore procedure**
+  - Restore from backup to staging environment
+  - Verify data integrity
+  - Document restore time
+
+- [ ] **Set up off-site backups**
+  - S3, Google Cloud Storage, or similar
+  - Encrypted backups
+
+- [ ] **Create disaster recovery plan**
+  - RTO (Recovery Time Objective)
+  - RPO (Recovery Point Objective)
+  - Contact procedures
+
+### Documentation
+
+- [ ] **Document deployment architecture**
+  - Server specifications
+  - Network topology
+  - Service dependencies
+
+- [ ] **Create runbook for common operations**
+  - Application restart
+  - Database migration
+  - Backup restoration
+  - Rollback procedure
+
+- [ ] **Document environment variables**
+  - Required variables
+  - Default values
+  - Security considerations
+
+- [ ] **Prepare user documentation**
+  - Admin user guide
+  - API documentation
+  - Troubleshooting guide
+
+### Testing
+
+- [ ] **Run integration tests**
+  ```bash
+  cd apps/backend
+  npm test
+  ```
+
+- [ ] **Perform security scan**
+  - Run `npm audit`
+  - Check for vulnerable dependencies
+  - Update packages if needed
+
+- [ ] **Test authentication flow**
+  - Login with valid credentials
+  - Login with invalid credentials (verify rate limiting)
+  - Token expiration
+  - Protected endpoints
+
+- [ ] **Test multi-tenancy isolation**
+  - Verify users can only access their company's data
+  - Test cross-tenant access prevention
+
+- [ ] **Perform smoke tests**
+  - Create work order
+  - Assign resources
+  - Log operations
+  - Generate reports
+
+### Legal and Compliance
+
+- [ ] **Review data privacy compliance**
+  - GDPR, CCPA, or local regulations
+  - Data retention policies
+  - User consent mechanisms
+
+- [ ] **Update Terms of Service and Privacy Policy**
+
+- [ ] **Configure data export capabilities** (if required by law)
+
+### Post-Deployment
+
+- [ ] **Monitor first 24 hours closely**
+  - Check error logs
+  - Monitor resource usage
+  - Verify backups are running
+
+- [ ] **Collect baseline metrics**
+  - Response times
+  - Resource utilization
+  - User activity
+
+- [ ] **Schedule regular maintenance windows**
+  - Database maintenance
+  - Security updates
+  - Application updates
+
+- [ ] **Set up regular security audits**
+  - Quarterly penetration testing
+  - Dependency vulnerability scanning
+  - Access log review
+
+## Quick Reference: Critical Commands
+
+### Production Startup
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Check service health
+docker-compose ps
+
+# View logs
+docker-compose logs -f drait-backend
+```
+
+### Database Operations
+
+```bash
+# Backup database
+docker exec drait-db pg_dump -U drait drait_mes | gzip > backup_$(date +%Y%m%d).sql.gz
+
+# Run migrations
+cd apps/backend && npm run prisma:migrate
+
+# Check database size
+docker exec drait-db psql -U drait -d drait_mes -c "SELECT pg_size_pretty(pg_database_size('drait_mes'));"
+```
+
+### Application Management
+
+```bash
+# Restart backend
+docker-compose restart drait-backend
+
+# View backend logs
+docker logs -f drait-backend --tail 100
+
+# Check backend health
+curl https://yourdomain.com/api/auth/status
+```
+
+## Emergency Procedures
+
+### Application Not Starting
+
+1. Check environment variables: `docker exec drait-backend env | grep JWT_SECRET`
+2. Verify database connection: `docker exec drait-db pg_isready -U drait`
+3. Review logs: `docker logs drait-backend --tail 50`
+4. Restart services: `docker-compose restart`
+
+### Database Connection Issues
+
+1. Check database is running: `docker ps | grep drait-db`
+2. Test connection: `docker exec drait-db psql -U drait -d drait_mes -c "SELECT 1;"`
+3. Review database logs: `docker logs drait-db --tail 50`
+4. Verify DATABASE_URL environment variable
+
+### High Load/Performance Issues
+
+1. Check resource usage: `docker stats`
+2. Review slow queries: Check PostgreSQL logs
+3. Scale horizontally if needed
+4. Review and optimize database indexes
+
+## Related Documentation
+
+- [Security Configuration](/deployment/security) - Detailed security settings
+- [Database Setup](/deployment/database) - Database management guide
+- [Development Guide](/deployment/docker-setup) - Local development environment

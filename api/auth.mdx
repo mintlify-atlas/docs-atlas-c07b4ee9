@@ -1,0 +1,262 @@
+---
+title: 'Authentication API'
+description: 'Authentication endpoints for login, session management, and user information'
+---
+
+## Overview
+
+The Auth API provides endpoints for user authentication, session management, and retrieving current user information. The login endpoint has rate limiting (5 attempts per minute per IP) to prevent brute force attacks.
+
+## POST /auth/login
+
+Authenticate a user and receive a JWT access token.
+
+### Authentication
+No authentication required.
+
+### Rate Limiting
+- **Limit**: 5 requests per minute per IP address
+- **Window**: 60 seconds (60000ms)
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address. Must be a valid email format.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password. Minimum length: 6 characters.
+</ParamField>
+
+### Response
+
+<ResponseField name="accessToken" type="string">
+  JWT access token to be used in subsequent authenticated requests.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  Authenticated user information.
+  
+  <ResponseField name="id" type="string">
+    User's unique identifier (CUID).
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    User's email address.
+  </ResponseField>
+  
+  <ResponseField name="fullName" type="string">
+    User's full name.
+  </ResponseField>
+  
+  <ResponseField name="role" type="UserRole">
+    User's role. Possible values: `DUENO`, `SUPERVISOR`, `OPERARIO`, `ADMIN`.
+  </ResponseField>
+  
+  <ResponseField name="companyId" type="string">
+    Company/tenant identifier.
+  </ResponseField>
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://api.example.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "supervisor@empresa.com",
+    "password": "secure123"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "email": "supervisor@empresa.com",
+    "fullName": "Juan Pérez",
+    "role": "SUPERVISOR",
+    "companyId": "clx0a1b2c3d4e5f6g7h8i9j0"
+  }
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface LoginDto {
+  email: string;      // Valid email format
+  password: string;   // Minimum 6 characters
+}
+
+interface LoginResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: 'DUENO' | 'SUPERVISOR' | 'OPERARIO' | 'ADMIN';
+    companyId: string;
+  };
+}
+```
+
+---
+
+## GET /auth/me
+
+Retrieve the authenticated user's profile information.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Response
+
+<ResponseField name="id" type="string">
+  User's unique identifier.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email address.
+</ResponseField>
+
+<ResponseField name="fullName" type="string">
+  User's full name.
+</ResponseField>
+
+<ResponseField name="role" type="UserRole">
+  User's role: `DUENO`, `SUPERVISOR`, `OPERARIO`, or `ADMIN`.
+</ResponseField>
+
+<ResponseField name="companyId" type="string">
+  Associated company ID.
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the user account is active.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of account creation.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "email": "supervisor@empresa.com",
+  "fullName": "Juan Pérez",
+  "role": "SUPERVISOR",
+  "companyId": "clx0a1b2c3d4e5f6g7h8i9j0",
+  "isActive": true,
+  "createdAt": "2026-03-10T10:30:00.000Z"
+}
+```
+
+---
+
+## POST /auth/logout
+
+Logout the current user (client-side token invalidation).
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Always returns `true`. Token invalidation is handled client-side.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://api.example.com/auth/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### Example Response
+
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## GET /auth/status
+
+Check the authentication service health status.
+
+### Authentication
+No authentication required.
+
+### Response
+
+<ResponseField name="status" type="string">
+  Service status indicator.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  Current server timestamp.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/auth/status
+```
+
+### Example Response
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-03-13T14:25:30.123Z"
+}
+```
+
+## User Roles
+
+The system supports four user roles with different permission levels:
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `DUENO` | Owner | Full access to all features |
+| `SUPERVISOR` | Supervisor | Manages operations and oversees work |
+| `OPERARIO` | Operator | Plant operator, limited to work order execution |
+| `ADMIN` | Technical Admin | System administration and configuration |
+
+## Error Responses
+
+### 401 Unauthorized
+Returned when authentication fails or token is invalid/missing.
+
+```json
+{
+  "statusCode": 401,
+  "message": "Unauthorized"
+}
+```
+
+### 429 Too Many Requests
+Returned when rate limit is exceeded on login endpoint.
+
+```json
+{
+  "statusCode": 429,
+  "message": "ThrottlerException: Too Many Requests"
+}
+```

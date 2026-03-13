@@ -1,0 +1,318 @@
+---
+title: 'Security Configuration'
+description: 'JWT authentication, rate limiting, password requirements, and security best practices for DRAIT Mini-MES'
+icon: 'shield-halved'
+---
+
+## Overview
+
+DRAIT Mini-MES implements multiple layers of security to protect your manufacturing data and operations. This guide covers authentication, authorization, rate limiting, and production security best practices.
+
+## JWT Authentication
+
+### Configuration
+
+JWT (JSON Web Token) authentication is configured in the backend using environment variables:
+
+```bash .env
+JWT_SECRET=change_this_secret
+JWT_EXPIRES_IN=8h
+```
+
+<Warning>
+  **Production Security**: The application will refuse to start in production mode if `JWT_SECRET` contains a weak or default value. Change this immediately before deploying.
+</Warning>
+
+### JWT Secret Requirements
+
+The backend validates JWT secrets at startup (`apps/backend/src/main.ts:6-24`):
+
+**Rejected weak secrets:**
+- `change_this_secret`
+- `secret`
+- `changeme`
+- `jwt_secret`
+
+**Recommended JWT secret generation:**
+
+```bash
+# Generate a strong random secret (64 characters)
+openssl rand -base64 48
+
+# Or use node
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
+
+### JWT Configuration in Code
+
+The JWT module is registered in `apps/backend/src/modules/auth/auth.module.ts:10-19`:
+
+```typescript
+JwtModule.registerAsync({
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.get<string>('JWT_SECRET', 'change_this_secret'),
+    signOptions: {
+      expiresIn: configService.get<string>('JWT_EXPIRES_IN', '8h')
+    }
+  })
+})
+```
+
+### Token Validation
+
+Token validation is handled by the `JwtAuthGuard` (`apps/backend/src/common/auth/jwt-auth.guard.ts:14-38`):
+
+```typescript
+const authHeader = request.headers.authorization;
+
+if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  throw new UnauthorizedException('Token ausente o invalido');
+}
+
+const token = authHeader.slice(7);
+const payload = this.jwtService.verify<JwtUser>(token, {
+  secret: process.env.JWT_SECRET ?? 'change_this_secret'
+});
+```
+
+**Protected endpoints** use the `@UseGuards(JwtAuthGuard)` decorator:
+
+```typescript
+@Get('me')
+@UseGuards(JwtAuthGuard)
+me(@CurrentUser() user: JwtUser) {
+  return this.service.me(user.sub, user.companyId);
+}
+```
+
+## Rate Limiting
+
+### Global Rate Limiting
+
+The application uses `@nestjs/throttler` for rate limiting. Global configuration is set in `apps/backend/src/app.module.ts:26`:
+
+```typescript
+ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }])
+```
+
+- **TTL**: 60,000 milliseconds (60 seconds)
+- **Limit**: 20 requests per IP address per minute
+
+### Login Endpoint Protection
+
+The login endpoint has stricter rate limiting to prevent brute force attacks (`apps/backend/src/modules/auth/auth.controller.ts:20-24`):
+
+```typescript
+@Post('login')
+@Throttle({ default: { ttl: 60000, limit: 5 } }) // Max 5 attempts per minute per IP
+login(@Body() dto: LoginDto) {
+  return this.service.login(dto);
+}
+```
+
+- **TTL**: 60,000 milliseconds (60 seconds)
+- **Limit**: 5 login attempts per IP address per minute
+
+<Note>
+  The auth controller uses `@SkipThrottle()` globally and applies throttling only to the login endpoint for granular control.
+</Note>
+
+## Password Requirements
+
+### Validation Rules
+
+Password validation is enforced through DTOs using `class-validator` (`apps/backend/src/modules/auth/dto/login.dto.ts:7-9`):
+
+```typescript
+@IsString()
+@MinLength(6)
+password!: string;
+```
+
+**Current requirements:**
+- Minimum length: 6 characters
+- Type: String
+
+### Password Hashing
+
+Passwords are hashed using bcrypt with a salt rounds of 10 (`apps/backend/prisma/seed.ts:29`):
+
+```typescript
+const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
+```
+
+### Password Verification
+
+During login, passwords are compared securely (`apps/backend/src/modules/auth/auth.service.ts:41-45`):
+
+```typescript
+const passwordOk = await bcrypt.compare(dto.password, user.passwordHash);
+
+if (!passwordOk) {
+  throw new UnauthorizedException('Credenciales invalidas');
+}
+```
+
+<Warning>
+  **Production Recommendation**: Consider increasing password requirements:
+  - Minimum 12 characters
+  - Require uppercase, lowercase, numbers, and special characters
+  - Implement password strength validation
+</Warning>
+
+## CORS Configuration
+
+### Environment Variable
+
+```bash .env
+CORS_ORIGIN=http://localhost
+```
+
+### Application Configuration
+
+CORS is configured in `apps/backend/src/main.ts:27`:
+
+```typescript
+const corsOrigin = configService.get('CORS_ORIGIN', 'http://localhost');
+app.enableCors({ origin: corsOrigin, credentials: true });
+```
+
+<Warning>
+  In production, set `CORS_ORIGIN` to your actual frontend domain. Never use `*` in production.
+</Warning>
+
+## Security Best Practices
+
+### 1. Environment Variables
+
+**Never commit sensitive data:**
+- Use `.env` files for local development
+- Use environment variable management systems in production (AWS Secrets Manager, HashiCorp Vault, etc.)
+- Keep `.env` in `.gitignore`
+
+**Required production variables:**
+```bash
+NODE_ENV=production
+JWT_SECRET=<strong-random-secret>
+DATABASE_URL=postgresql://...
+CORS_ORIGIN=https://yourdomain.com
+```
+
+### 2. Input Validation
+
+All DTOs use `class-validator` decorators. Global validation is enabled in `apps/backend/src/main.ts:28-34`:
+
+```typescript
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,           // Strip non-whitelisted properties
+    forbidNonWhitelisted: true, // Throw error on unknown properties
+    transform: true             // Auto-transform payloads to DTO types
+  })
+);
+```
+
+### 3. Multi-Tenancy Isolation
+
+All queries filter by `companyId` to enforce tenant isolation:
+
+```typescript
+const user = await this.prisma.user.findFirst({
+  where: {
+    email: dto.email.toLowerCase(),
+    isActive: true,
+    company: {
+      isActive: true
+    }
+  },
+  include: {
+    company: true
+  }
+});
+```
+
+### 4. Audit Logging
+
+All authentication events are logged (`apps/backend/src/modules/auth/auth.service.ts:60-69`):
+
+```typescript
+await this.auditService.log({
+  companyId: user.companyId,
+  userId: user.id,
+  entityType: 'AUTH',
+  entityId: user.id,
+  action: 'LOGIN',
+  metadata: {
+    email: user.email
+  }
+});
+```
+
+### 5. HTTPS in Production
+
+Always use HTTPS in production:
+- Configure SSL/TLS certificates in your reverse proxy (nginx, etc.)
+- Redirect HTTP to HTTPS
+- Use HSTS headers
+
+### 6. Database Security
+
+**Connection security:**
+- Use SSL for database connections in production
+- Restrict database access by IP/VPC
+- Use strong database passwords
+- Create read-only users for reporting
+
+**Example SSL-enabled connection:**
+```bash
+DATABASE_URL="postgresql://user:pass@host:5432/db?schema=public&sslmode=require"
+```
+
+### 7. Security Headers
+
+Consider adding security headers using helmet:
+
+```bash
+npm install helmet
+```
+
+```typescript
+import helmet from 'helmet';
+app.use(helmet());
+```
+
+### 8. Default Credentials
+
+<Warning>
+  The seed script creates default users with password `ChangeMe123!`. **Delete or change these credentials immediately in production.**
+</Warning>
+
+Default users created by seed:
+- `owner@drait.local` / `ChangeMe123!`
+- `supervisor@drait.local` / `ChangeMe123!`
+- `lucas@drait.local` / `ChangeMe123!`
+
+## Security Checklist
+
+Before deploying to production:
+
+- [ ] Generate and set a strong `JWT_SECRET`
+- [ ] Configure `CORS_ORIGIN` to your production domain
+- [ ] Enable HTTPS with valid SSL certificates
+- [ ] Change or remove all default seed credentials
+- [ ] Enable database SSL connections
+- [ ] Review and strengthen password requirements
+- [ ] Set up monitoring and alerting for failed login attempts
+- [ ] Configure firewall rules to restrict database access
+- [ ] Enable audit logging and regular log review
+- [ ] Implement backup and disaster recovery procedures
+- [ ] Set up rate limiting at the reverse proxy level (nginx, CloudFlare)
+- [ ] Review and update dependencies regularly
+
+## Related Documentation
+
+- [Database Setup](/deployment/database) - Database security and configuration
+- [Production Checklist](/deployment/production-checklist) - Complete pre-deployment checklist
+- [Development Guide](/deployment/docker-setup) - Local development setup

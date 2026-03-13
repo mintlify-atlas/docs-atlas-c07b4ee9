@@ -1,0 +1,421 @@
+---
+title: 'Clients API'
+description: 'Client management endpoints for CRUD operations on customer records'
+---
+
+## Overview
+
+The Clients API manages customer/client records. All endpoints require authentication, and write operations require elevated permissions.
+
+## GET /clients
+
+Retrieve a paginated list of clients.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination. Minimum: 1.
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of items per page. Range: 1-100.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search term to filter clients by name, contact, email, or phone.
+</ParamField>
+
+### Response
+
+Returns a paginated response object.
+
+<ResponseField name="data" type="array">
+  Array of client objects.
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  Pagination metadata.
+  
+  <ResponseField name="total" type="number">
+    Total number of clients matching the query.
+  </ResponseField>
+  
+  <ResponseField name="page" type="number">
+    Current page number.
+  </ResponseField>
+  
+  <ResponseField name="limit" type="number">
+    Items per page.
+  </ResponseField>
+  
+  <ResponseField name="totalPages" type="number">
+    Total number of pages.
+  </ResponseField>
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.example.com/clients?page=1&limit=20&search=Acme" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "data": [
+    {
+      "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+      "name": "Acme Corporation",
+      "contact": "John Smith",
+      "phone": "+54 11 4567-8901",
+      "email": "contacto@acmecorp.com",
+      "address": "Av. Corrientes 1234, CABA",
+      "notes": "Cliente VIP - Descuento 10%",
+      "isActive": true,
+      "createdAt": "2026-01-15T10:30:00.000Z",
+      "updatedAt": "2026-02-20T14:45:00.000Z"
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+## GET /clients/:id
+
+Retrieve a specific client by ID.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Client ID to retrieve.
+</ParamField>
+
+### Response
+
+Returns a single client object with related data.
+
+<ResponseField name="id" type="string">
+  Client's unique identifier (CUID).
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Client's business name.
+</ResponseField>
+
+<ResponseField name="contact" type="string">
+  Primary contact person.
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  Contact phone number.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Contact email address.
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  Physical address.
+</ResponseField>
+
+<ResponseField name="notes" type="string">
+  Additional notes about the client.
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the client is active.
+</ResponseField>
+
+<ResponseField name="quotations" type="array">
+  Associated quotations (optional expanded field).
+</ResponseField>
+
+<ResponseField name="workOrders" type="array">
+  Associated work orders (optional expanded field).
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/clients/clx1a2b3c4d5e6f7g8h9i0j1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "name": "Acme Corporation",
+  "contact": "John Smith",
+  "phone": "+54 11 4567-8901",
+  "email": "contacto@acmecorp.com",
+  "address": "Av. Corrientes 1234, CABA",
+  "notes": "Cliente VIP - Descuento 10%",
+  "isActive": true,
+  "createdAt": "2026-01-15T10:30:00.000Z",
+  "updatedAt": "2026-02-20T14:45:00.000Z"
+}
+```
+
+---
+
+## POST /clients
+
+Create a new client.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  Client's business name. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="contact" type="string">
+  Primary contact person name. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Contact phone number. Maximum length: 50 characters.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Contact email address. Must be valid email format. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Physical address. Maximum length: 250 characters.
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes. Maximum length: 500 characters.
+</ParamField>
+
+### Response
+
+Returns the created client object.
+
+### Example Request
+
+```bash
+curl -X POST https://api.example.com/clients \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "TechStart SRL",
+    "contact": "María García",
+    "phone": "+54 11 9876-5432",
+    "email": "maria@techstart.com",
+    "address": "San Martín 567, Buenos Aires",
+    "notes": "Nuevo cliente - Contactar cada trimestre"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx2b3c4d5e6f7g8h9i0j1k2",
+  "name": "TechStart SRL",
+  "contact": "María García",
+  "phone": "+54 11 9876-5432",
+  "email": "maria@techstart.com",
+  "address": "San Martín 567, Buenos Aires",
+  "notes": "Nuevo cliente - Contactar cada trimestre",
+  "isActive": true,
+  "companyId": "clx0a1b2c3d4e5f6g7h8i9j0",
+  "createdAt": "2026-03-13T16:00:00.000Z",
+  "updatedAt": "2026-03-13T16:00:00.000Z"
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface CreateClientDto {
+  name: string;        // Required, max 120 chars
+  contact?: string;    // Optional, max 120 chars
+  phone?: string;      // Optional, max 50 chars
+  email?: string;      // Optional, valid email, max 120 chars
+  address?: string;    // Optional, max 250 chars
+  notes?: string;      // Optional, max 500 chars
+}
+```
+
+---
+
+## PATCH /clients/:id
+
+Update an existing client.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Client ID to update.
+</ParamField>
+
+### Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField body="name" type="string">
+  Client's business name. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="contact" type="string">
+  Primary contact person. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Contact phone number. Maximum length: 50 characters.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Contact email address. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Physical address. Maximum length: 250 characters.
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes. Maximum length: 500 characters.
+</ParamField>
+
+### Response
+
+Returns the updated client object.
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.example.com/clients/clx2b3c4d5e6f7g8h9i0j1k2 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "+54 11 9876-5433",
+    "notes": "Cliente actualizado - Preferencia de contacto por email"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx2b3c4d5e6f7g8h9i0j1k2",
+  "name": "TechStart SRL",
+  "contact": "María García",
+  "phone": "+54 11 9876-5433",
+  "email": "maria@techstart.com",
+  "address": "San Martín 567, Buenos Aires",
+  "notes": "Cliente actualizado - Preferencia de contacto por email",
+  "isActive": true,
+  "updatedAt": "2026-03-13T17:00:00.000Z"
+}
+```
+
+---
+
+## DELETE /clients/:id
+
+Delete a client (soft delete - marks as inactive).
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Client ID to delete.
+</ParamField>
+
+### Response
+
+Returns success confirmation.
+
+### Example Request
+
+```bash
+curl -X DELETE https://api.example.com/clients/clx2b3c4d5e6f7g8h9i0j1k2 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Client deleted successfully"
+}
+```
+
+---
+
+## GET /clients/status
+
+Check the clients service health status.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/clients/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "status": "ok",
+  "service": "clients"
+}
+```
+
+## Error Responses
+
+### 404 Not Found
+Returned when client ID doesn't exist.
+
+```json
+{
+  "statusCode": 404,
+  "message": "Client not found"
+}
+```
+
+### 400 Bad Request
+Returned when validation fails.
+
+```json
+{
+  "statusCode": 400,
+  "message": ["email must be a valid email"],
+  "error": "Bad Request"
+}
+```

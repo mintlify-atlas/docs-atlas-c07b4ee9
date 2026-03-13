@@ -1,0 +1,583 @@
+---
+title: Work Orders (OT)
+description: Production order lifecycle, status management, resource assignments, and material consumption tracking
+icon: clipboard-list
+---
+
+## Overview
+
+Work Orders (Órdenes de Trabajo - OT) are the core operational entity of DRAIT Mini-MES. They represent production jobs from creation through planning, execution, and delivery. Each work order tracks time, resources, materials, and events throughout its lifecycle.
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle Tracking" icon="arrows-spin">
+    8-state workflow from PENDIENTE to ENTREGADA
+  </Card>
+  <Card title="Resource Assignment" icon="users-gear">
+    Assign operators and machines to work orders
+  </Card>
+  <Card title="Material Consumption" icon="boxes-stacked">
+    Track real-time material usage with cost snapshots
+  </Card>
+  <Card title="Event Logging" icon="list-timeline">
+    Complete traceability with operation events and timestamps
+  </Card>
+</CardGroup>
+
+---
+
+## Work Order Status Flow
+
+<Steps>
+  <Step title="PENDIENTE">
+    Newly created, awaiting planning
+  </Step>
+  <Step title="PLANIFICADA">
+    Scheduled with planned dates and resource assignments
+  </Step>
+  <Step title="EN_PROCESO">
+    Active production, operators working
+  </Step>
+  <Step title="PAUSADA">
+    Temporarily halted (requires pause reason)
+  </Step>
+  <Step title="RETRABAJO">
+    Rework required due to quality issues
+  </Step>
+  <Step title="FINALIZADA">
+    Work completed, awaiting delivery
+  </Step>
+  <Step title="ENTREGADA">
+    Delivered to client, ready for invoicing
+  </Step>
+  <Step title="CANCELADA">
+    Cancelled, no further action
+  </Step>
+</Steps>
+
+---
+
+## API Endpoints
+
+### List Work Orders
+
+```http
+GET /work-orders
+```
+
+**Query Parameters:**
+
+<ParamField query="status" type="string" optional>
+  Filter by status: `PENDIENTE`, `PLANIFICADA`, `EN_PROCESO`, `PAUSADA`, `FINALIZADA`, `ENTREGADA`, `CANCELADA`, `RETRABAJO`
+</ParamField>
+
+<ParamField query="search" type="string" optional>
+  Search by code or title
+</ParamField>
+
+<ParamField query="assignedToMe" type="boolean" optional>
+  Filter to show only work orders assigned to current user (operators)
+</ParamField>
+
+**Response:**
+
+```json
+[
+  {
+    "id": "cuid123",
+    "code": "OT-2026-045",
+    "title": "Fabricación de tanque",
+    "description": "Tanque cilíndrico 5000L",
+    "status": "EN_PROCESO",
+    "priority": 1,
+    "clientId": "client123",
+    "client": {
+      "name": "Industria Aceros SA"
+    },
+    "plannedDate": "2026-03-20T08:00:00Z",
+    "commitmentDate": "2026-03-30T23:59:59Z",
+    "startedAt": "2026-03-20T08:15:00Z",
+    "estimatedTimeMin": 3600,
+    "estimatedCost": 250000.00,
+    "assignments": [
+      {
+        "resourceId": "res123",
+        "userId": "user456",
+        "assignedAt": "2026-03-20T08:00:00Z"
+      }
+    ],
+    "createdAt": "2026-03-15T10:00:00Z"
+  }
+]
+```
+
+### Get Work Order by ID
+
+```http
+GET /work-orders/:id
+```
+
+Returns full work order details including:
+- Assignments with resource and user info
+- Operation logs (events)
+- Material consumptions
+- Client information
+- Quotation reference (if converted)
+
+### Create Work Order
+
+```http
+POST /work-orders
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="code" type="string" required>
+  Unique work order code (e.g., `OT-2026-045`)
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Work order title
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Detailed description
+</ParamField>
+
+<ParamField body="clientId" type="string" required>
+  Client ID
+</ParamField>
+
+<ParamField body="quotationId" type="string" optional>
+  Associated quotation ID (if converted from quote)
+</ParamField>
+
+<ParamField body="priority" type="integer" required>
+  Priority level: 1 (high) to 5 (low)
+</ParamField>
+
+<ParamField body="plannedDate" type="datetime" optional>
+  Planned start date
+</ParamField>
+
+<ParamField body="commitmentDate" type="datetime" optional>
+  Delivery commitment date
+</ParamField>
+
+<ParamField body="estimatedTimeMin" type="integer" required>
+  Estimated time in minutes (min: 0)
+</ParamField>
+
+<ParamField body="estimatedCost" type="decimal" required>
+  Estimated cost (min: 0)
+</ParamField>
+
+<ParamField body="notes" type="string" optional>
+  Internal notes
+</ParamField>
+
+<ParamField body="dashboardUrl" type="string" optional>
+  URL to Grafana or external dashboard for this batch
+</ParamField>
+
+**Example:**
+
+```json
+{
+  "code": "OT-2026-046",
+  "title": "Estructura metálica galpón",
+  "description": "Fabricación e instalación de estructura",
+  "clientId": "client123",
+  "priority": 2,
+  "plannedDate": "2026-04-01T08:00:00Z",
+  "commitmentDate": "2026-04-15T23:59:59Z",
+  "estimatedTimeMin": 4800,
+  "estimatedCost": 380000.00,
+  "notes": "Requiere grúa para montaje"
+}
+```
+
+### Create from Quotation
+
+```http
+POST /work-orders/from-quotation/:quotationId
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="code" type="string" required>
+  Work order code
+</ParamField>
+
+<ParamField body="commitmentDate" type="datetime" optional>
+  Delivery commitment date
+</ParamField>
+
+Automatically copies client, title, description, and estimates from the quotation.
+
+### Update Work Order
+
+```http
+PATCH /work-orders/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:** Same fields as Create (all optional)
+
+### Change Status
+
+```http
+PATCH /work-orders/:id/status
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`, `OPERARIO`
+
+**Request Body:**
+
+<ParamField body="status" type="enum" required>
+  New status: `PENDIENTE`, `PLANIFICADA`, `EN_PROCESO`, `PAUSADA`, `FINALIZADA`, `ENTREGADA`, `CANCELADA`, `RETRABAJO`
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Status change reason or note
+</ParamField>
+
+```json
+{
+  "status": "EN_PROCESO",
+  "note": "Inicio de soldadura"
+}
+```
+
+Status changes automatically create `CAMBIO_ESTADO` events in the operation log.
+
+### Assign Resource
+
+```http
+POST /work-orders/:id/assignments
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="resourceId" type="string" required>
+  Resource ID (machine or human)
+</ParamField>
+
+<ParamField body="userId" type="string" optional>
+  User ID if assigning a human operator
+</ParamField>
+
+```json
+{
+  "resourceId": "res123",
+  "userId": "user456"
+}
+```
+
+Creates an `ASIGNADO` event in the operation log.
+
+### Add Event
+
+```http
+POST /work-orders/:id/events
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`, `OPERARIO`
+
+**Request Body:**
+
+<ParamField body="eventType" type="enum" required>
+  Event type: `OT_CREADA`, `ASIGNADO`, `INICIO`, `PAUSA`, `REANUDACION`, `FINALIZACION`, `CAMBIO_ESTADO`, `MATERIAL_CONSUMIDO`, `NOTA`
+</ParamField>
+
+<ParamField body="resourceId" type="string" optional>
+  Resource involved in the event
+</ParamField>
+
+<ParamField body="pauseReason" type="string" optional>
+  Required for `PAUSA` events (e.g., "Falta de material")
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Free-form note
+</ParamField>
+
+**Example - Start Work:**
+
+```json
+{
+  "eventType": "INICIO",
+  "resourceId": "res123",
+  "note": "Comenzando corte de chapas"
+}
+```
+
+**Example - Pause:**
+
+```json
+{
+  "eventType": "PAUSA",
+  "pauseReason": "Mantenimiento preventivo máquina",
+  "note": "Pausa programada 30 minutos"
+}
+```
+
+### Add Material Consumption
+
+```http
+POST /work-orders/:id/consumptions
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`, `OPERARIO`
+
+**Request Body:**
+
+<ParamField body="materialId" type="string" required>
+  Material ID to consume
+</ParamField>
+
+<ParamField body="quantity" type="decimal" required>
+  Quantity consumed (min: 0.001)
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Consumption note
+</ParamField>
+
+```json
+{
+  "materialId": "mat789",
+  "quantity": 25.5,
+  "note": "Consumo de chapa 6mm"
+}
+```
+
+The system:
+- Deducts quantity from material stock
+- Snapshots current `unitCost` to `unitCostSnapshot`
+- Creates `MATERIAL_CONSUMIDO` event in operation log
+- Records consumption with timestamp
+
+### Close Delivery
+
+```http
+POST /work-orders/:id/close-delivery
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+Marks work order as delivered to client.
+
+**Request Body:**
+
+<ParamField body="deliveryNote" type="string" optional>
+  Delivery notes or observations
+</ParamField>
+
+<ParamField body="deliveryChecklist" type="string" optional>
+  Quality checklist or items delivered
+</ParamField>
+
+### Update/Remove Attachment
+
+```http
+POST /work-orders/:id/attachment
+DELETE /work-orders/:id/attachment
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+Manage delivery proof attachments (e.g., signed remittance note).
+
+### Delete Work Order
+
+```http
+DELETE /work-orders/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+---
+
+## Data Model
+
+### Work Order Fields
+
+<ParamField path="id" type="string">
+  Unique identifier (CUID)
+</ParamField>
+
+<ParamField path="companyId" type="string">
+  Company/tenant identifier
+</ParamField>
+
+<ParamField path="clientId" type="string">
+  Client ID
+</ParamField>
+
+<ParamField path="quotationId" type="string | null">
+  Source quotation ID if converted
+</ParamField>
+
+<ParamField path="createdByUserId" type="string | null">
+  User who created the work order
+</ParamField>
+
+<ParamField path="code" type="string">
+  Unique work order code
+</ParamField>
+
+<ParamField path="title" type="string">
+  Work order title
+</ParamField>
+
+<ParamField path="description" type="string">
+  Detailed description
+</ParamField>
+
+<ParamField path="status" type="enum">
+  Current status (see status flow above)
+</ParamField>
+
+<ParamField path="priority" type="integer">
+  Priority: 1 (high) to 5 (low)
+</ParamField>
+
+<ParamField path="plannedDate" type="datetime | null">
+  Planned start date
+</ParamField>
+
+<ParamField path="commitmentDate" type="datetime | null">
+  Delivery commitment date
+</ParamField>
+
+<ParamField path="startedAt" type="datetime | null">
+  Actual start timestamp
+</ParamField>
+
+<ParamField path="finishedAt" type="datetime | null">
+  Actual finish timestamp
+</ParamField>
+
+<ParamField path="deliveredAt" type="datetime | null">
+  Delivery timestamp
+</ParamField>
+
+<ParamField path="closedAt" type="datetime | null">
+  Closure timestamp
+</ParamField>
+
+<ParamField path="closedByUserId" type="string | null">
+  User who closed/delivered the order
+</ParamField>
+
+<ParamField path="estimatedTimeMin" type="integer">
+  Estimated time in minutes
+</ParamField>
+
+<ParamField path="estimatedCost" type="decimal">
+  Estimated total cost
+</ParamField>
+
+<ParamField path="notes" type="string | null">
+  Internal notes
+</ParamField>
+
+<ParamField path="attachmentUrl" type="string | null">
+  URL to delivery proof document
+</ParamField>
+
+<ParamField path="isSigned" type="boolean">
+  Whether remittance note is signed (default: false)
+</ParamField>
+
+<ParamField path="dashboardUrl" type="string | null">
+  External dashboard URL (Grafana, etc.)
+</ParamField>
+
+<ParamField path="assignments" type="array">
+  Array of WorkOrderAssignment objects
+</ParamField>
+
+<ParamField path="operationLogs" type="array">
+  Array of OperationLog events
+</ParamField>
+
+<ParamField path="materialConsumptions" type="array">
+  Array of MaterialConsumption records
+</ParamField>
+
+---
+
+## Operation Event Types
+
+All events are logged in `OperationLog` with timestamps:
+
+| Event Type | Description | When to Use |
+|------------|-------------|-------------|
+| `OT_CREADA` | Work order created | Automatic on creation |
+| `ASIGNADO` | Resource/operator assigned | When assigning resources |
+| `INICIO` | Work started | Operator begins work |
+| `PAUSA` | Work paused | Temporary halt (requires `pauseReason`) |
+| `REANUDACION` | Work resumed | After pause |
+| `FINALIZACION` | Work finished | Completion of production |
+| `CAMBIO_ESTADO` | Status changed | Automatic on status updates |
+| `MATERIAL_CONSUMIDO` | Material consumed | Automatic on consumption |
+| `NOTA` | Free-form note | General observations |
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Code Generation">
+    - Format: `OT-YYYY-NNN` (e.g., `OT-2026-045`)
+    - Use year-based sequences
+    - Auto-increment within the year
+    - Keep codes unique per company
+  </Accordion>
+  
+  <Accordion title="Status Management">
+    - Move to `PLANIFICADA` once resources are assigned
+    - Transition to `EN_PROCESO` when actual work begins
+    - Use `PAUSADA` for temporary halts (always include `pauseReason`)
+    - Mark `FINALIZADA` when production is complete
+    - Set `ENTREGADA` only after client receives delivery
+  </Accordion>
+  
+  <Accordion title="Resource Assignment">
+    - Assign both machine (`resourceId`) and operator (`userId`) when applicable
+    - Track assignment timestamps for utilization reports
+    - Unassign resources when work order completes
+  </Accordion>
+  
+  <Accordion title="Material Consumption">
+    - Record consumptions in real-time during production
+    - Cost snapshots preserve historical accuracy
+    - Add notes for unusual consumption patterns
+    - Review consumption vs. estimates for productivity analysis
+  </Accordion>
+  
+  <Accordion title="Event Logging">
+    - Log start/pause/resume events for accurate time tracking
+    - Always provide `pauseReason` for PAUSA events
+    - Use `NOTA` events for important observations
+    - Events feed into productivity reports and dashboards
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Features
+
+- [Quotations](/features/quotations) - Convert approved quotes to work orders
+- [Resources](/features/resources) - Assign machines and operators
+- [Materials](/features/materials) - Track material consumption and stock
+- [Reports](/features/reports) - Productivity analysis and KPIs
+- [Audit Log](/features/audit) - Complete traceability of all changes

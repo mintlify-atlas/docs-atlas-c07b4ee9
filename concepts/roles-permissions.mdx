@@ -1,0 +1,258 @@
+---
+title: 'Roles and Permissions'
+description: 'Understanding the four user roles in DRAIT Mini-MES and their access control matrix'
+---
+
+## Overview
+
+DRAIT Mini-MES implements a role-based access control (RBAC) system with four distinct user roles. Each role has specific permissions designed to match workshop responsibilities and maintain operational security.
+
+## User Roles
+
+The system defines four roles in the `UserRole` enum:
+
+```prisma
+enum UserRole {
+  DUENO      // Owner with complete access
+  SUPERVISOR // Supervises and manages operations
+  OPERARIO   // Plant operator
+  ADMIN      // Technical administrator
+}
+```
+
+### OPERARIO (Operator)
+
+Plant floor workers who execute assigned work orders.
+
+**Purpose**: Execute production tasks without access to management functions
+
+**Key Characteristics**:
+- Limited to "My Shift" view
+- Can only see and work on assigned work orders
+- Can register events, progress, and material consumption
+- No access to dashboard, reports, or administrative functions
+
+**Typical Use Case**: Welders, machinists, and assembly workers who need to track their work time and material usage.
+
+### SUPERVISOR
+
+Shop floor managers who coordinate daily operations.
+
+**Purpose**: Manage production, dispatch work, and monitor performance
+
+**Key Characteristics**:
+- Full access to operational modules
+- Can create and manage clients, quotations, and work orders
+- Access to dashboard and productivity reports
+- Cannot manage users or view audit logs
+
+**Typical Use Case**: Production managers, shift supervisors, and workshop coordinators.
+
+### DUEÑO (Owner)
+
+Business owner with complete system access.
+
+**Purpose**: Strategic oversight, financial control, and user management
+
+**Key Characteristics**:
+- Complete access to all system functions
+- Can create, modify, and suspend users
+- Exclusive access to audit logs
+- Full visibility into financial metrics and system history
+
+**Typical Use Case**: Workshop owner, general manager, or business administrator.
+
+### ADMIN (Administrator)
+
+Technical administrator role with equivalent permissions to DUEÑO.
+
+**Purpose**: System administration and technical support
+
+**Key Characteristics**:
+- Identical permissions to DUEÑO
+- Intended for technical staff or external IT support
+- Full access for maintenance and troubleshooting
+
+**Typical Use Case**: IT administrators, system integrators, or technical consultants.
+
+## Permission Matrix
+
+The following table shows exact permissions for each role based on the backend controller implementations:
+
+<AccordionGroup>
+  <Accordion title="View Complete Permission Matrix">
+
+| Module | Action | OPERARIO | SUPERVISOR | DUEÑO | ADMIN |
+|--------|--------|:--------:|:----------:|:-----:|:-----:|
+| **Dashboard** |
+| View executive dashboard | ❌ | ✅ | ✅ | ✅ |
+| View KPIs and charts | ❌ | ✅ | ✅ | ✅ |
+| **Work Orders** |
+| View all work orders | ❌ | ✅ | ✅ | ✅ |
+| View assigned work orders | ✅ | ✅ | ✅ | ✅ |
+| Create work order | ❌ | ✅ | ✅ | ✅ |
+| Update work order | ❌ | ✅ | ✅ | ✅ |
+| Delete work order | ❌ | ✅ | ✅ | ✅ |
+| Assign resources/operators | ❌ | ✅ | ✅ | ✅ |
+| Change work order status | ✅ | ✅ | ✅ | ✅ |
+| Add events (start, pause, finish) | ✅ | ✅ | ✅ | ✅ |
+| Register material consumption | ✅ | ✅ | ✅ | ✅ |
+| Close delivery | ❌ | ✅ | ✅ | ✅ |
+| Upload/remove attachments | ❌ | ✅ | ✅ | ✅ |
+| **Clients** |
+| View clients | ✅ | ✅ | ✅ | ✅ |
+| Create client | ❌ | ✅ | ✅ | ✅ |
+| Update client | ❌ | ✅ | ✅ | ✅ |
+| Delete client | ❌ | ✅ | ✅ | ✅ |
+| **Quotations** |
+| View quotations | ❌ | ✅ | ✅ | ✅ |
+| Create quotation | ❌ | ✅ | ✅ | ✅ |
+| Update quotation | ❌ | ✅ | ✅ | ✅ |
+| Change quotation status | ❌ | ✅ | ✅ | ✅ |
+| Convert to work order | ❌ | ✅ | ✅ | ✅ |
+| **Resources** |
+| View resources | ❌ | ✅ | ✅ | ✅ |
+| Create resource | ❌ | ✅ | ✅ | ✅ |
+| Update resource | ❌ | ✅ | ✅ | ✅ |
+| Delete resource | ❌ | ✅ | ✅ | ✅ |
+| **Materials** |
+| View materials | ✅ | ✅ | ✅ | ✅ |
+| Create material | ❌ | ✅ | ✅ | ✅ |
+| Update material | ❌ | ✅ | ✅ | ✅ |
+| Adjust stock | ❌ | ✅ | ✅ | ✅ |
+| Delete material | ❌ | ✅ | ✅ | ✅ |
+| **Reports** |
+| View dashboard reports | ❌ | ✅ | ✅ | ✅ |
+| View productivity reports | ❌ | ✅ | ✅ | ✅ |
+| Export data | ❌ | ✅ | ✅ | ✅ |
+| **Users** |
+| View user list | ❌ | ✅ | ✅ | ✅ |
+| Create user | ❌ | ❌ | ✅ | ✅ |
+| Update user profile | ❌ | ❌ | ✅ | ✅ |
+| Change user role | ❌ | ❌ | ✅ | ✅ |
+| Change user password | ❌ | ❌ | ✅ | ✅ |
+| Suspend/activate user | ❌ | ❌ | ✅ | ✅ |
+| **Audit** |
+| View audit logs | ❌ | ✅ | ✅ | ✅ |
+| Filter audit history | ❌ | ✅ | ✅ | ✅ |
+| **Supervisor Center** |
+| Dispatch view | ❌ | ✅ | ✅ | ✅ |
+| Real-time monitoring | ❌ | ✅ | ✅ | ✅ |
+
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Details
+
+### Backend Enforcement
+
+Permissions are enforced at the API level using NestJS guards:
+
+```typescript
+@Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class UsersController {
+  @Post()
+  @Roles('DUENO', 'ADMIN')
+  create(@CurrentUser() user: JwtUser, @Body() dto: CreateUserDto) {
+    // Only DUEÑO and ADMIN can create users
+  }
+}
+```
+
+The `@Roles()` decorator specifies which roles can access each endpoint.
+
+### Role Normalization
+
+The system handles legacy role names through normalization:
+
+- `OWNER` → `DUENO`
+- `OPERATOR` → `OPERARIO`
+
+This ensures backward compatibility while maintaining Spanish naming conventions.
+
+### Multi-Tenancy
+
+All data is isolated by `companyId`. Users can only access data belonging to their company:
+
+```prisma
+model User {
+  id        String   @id @default(cuid())
+  companyId String
+  email     String
+  role      UserRole
+  company   Company  @relation(fields: [companyId], references: [id])
+  
+  @@unique([companyId, email])
+}
+```
+
+## Security Considerations
+
+### Authentication Flow
+
+1. User submits credentials to `/api/auth/login`
+2. Backend validates with bcrypt and generates JWT containing `userId`, `companyId`, `role`
+3. Token stored in browser `localStorage` under key `drait.session`
+4. All subsequent requests include `Authorization: Bearer <token>` header
+5. `JwtAuthGuard` validates token and `RolesGuard` checks permissions
+
+### Rate Limiting
+
+Login endpoint is throttled to **5 attempts per minute per IP** to prevent brute force attacks.
+
+### Token Expiration
+
+JWT tokens expire after the duration specified in `JWT_EXPIRES_IN` environment variable (default: 8 hours).
+
+## Best Practices
+
+<Tip>
+**Principle of Least Privilege**: Assign the minimum role necessary for each user's job function. Start with OPERARIO and escalate only when needed.
+</Tip>
+
+<Warning>
+**Avoid Multiple ADMIN Accounts**: Use ADMIN sparingly for technical personnel only. Workshop management should use DUEÑO or SUPERVISOR roles.
+</Warning>
+
+### Recommended Role Assignment
+
+| Job Function | Recommended Role |
+|--------------|------------------|
+| Welder, machinist, assembler | OPERARIO |
+| Shift supervisor, production manager | SUPERVISOR |
+| Workshop owner, general manager | DUEÑO |
+| IT administrator, system integrator | ADMIN |
+| Quality inspector | SUPERVISOR |
+| Inventory clerk | SUPERVISOR |
+
+## Audit Trail
+
+All role changes and user management actions are recorded in the `AuditLog` table:
+
+```prisma
+enum AuditActionType {
+  ROLE_CHANGE
+  PASSWORD_CHANGE
+  LOGIN
+  // ...
+}
+
+model AuditLog {
+  id         String          @id
+  companyId  String
+  userId     String?
+  action     AuditActionType
+  before     Json?
+  after      Json?
+  createdAt  DateTime
+}
+```
+
+DUEÑO and ADMIN users can review this audit trail to track security-related changes.
+
+## Related Documentation
+
+- [Data Model](/concepts/data-model) - User and Company entity relationships
+- [Workflow](/concepts/workflow) - How roles interact in the production workflow
+- [API Reference](/api/authentication) - Authentication endpoints

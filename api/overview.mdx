@@ -1,0 +1,243 @@
+---
+title: 'API Overview'
+description: 'Complete reference for the DRAIT Mini-MES REST API'
+---
+
+## Introduction
+
+The DRAIT Mini-MES API is a RESTful API built with NestJS that provides comprehensive manufacturing execution system capabilities. All endpoints return JSON responses and use standard HTTP status codes.
+
+## Base URL
+
+The API is accessible at the `/api` prefix:
+
+```
+http://localhost/api
+```
+
+For local development:
+```
+http://localhost:3000/api
+```
+
+## Request Format
+
+### Headers
+
+All authenticated requests must include:
+
+```http
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+```
+
+### Body Validation
+
+Request bodies are automatically validated using `class-validator`. Invalid requests return a `400 Bad Request` with detailed validation errors.
+
+## Response Format
+
+### Success Response
+
+Successful responses return the requested data with appropriate HTTP status codes:
+
+```json
+{
+  "id": "cm8x5y2z3000008l4a1b2c3d4",
+  "name": "Example Resource",
+  "createdAt": "2026-03-13T10:30:00.000Z"
+}
+```
+
+### Error Response
+
+Error responses follow NestJS exception filter patterns:
+
+```json
+{
+  "statusCode": 401,
+  "message": "Credenciales invalidas",
+  "error": "Unauthorized"
+}
+```
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes:
+
+| Code | Meaning | Description |
+|------|---------|-------------|
+| `200` | OK | Request succeeded |
+| `201` | Created | Resource created successfully |
+| `400` | Bad Request | Validation error or malformed request |
+| `401` | Unauthorized | Missing, invalid, or expired JWT token |
+| `403` | Forbidden | Insufficient permissions for this operation |
+| `404` | Not Found | Resource not found |
+| `429` | Too Many Requests | Rate limit exceeded |
+| `500` | Internal Server Error | Server error |
+
+## Common Error Codes
+
+### Authentication Errors
+
+```json
+{
+  "statusCode": 401,
+  "message": "Token ausente o invalido"
+}
+```
+
+```json
+{
+  "statusCode": 401,
+  "message": "Sesion expirada o token invalido"
+}
+```
+
+### Authorization Errors
+
+```json
+{
+  "statusCode": 403,
+  "message": "Forbidden resource"
+}
+```
+
+### Validation Errors
+
+```json
+{
+  "statusCode": 400,
+  "message": [
+    "email must be an email",
+    "password must be longer than or equal to 6 characters"
+  ],
+  "error": "Bad Request"
+}
+```
+
+### Not Found Errors
+
+```json
+{
+  "statusCode": 404,
+  "message": "Usuario no encontrado"
+}
+```
+
+## Rate Limiting
+
+The API implements rate limiting using `@nestjs/throttler`:
+
+### Global Rate Limit
+
+- **Limit**: 20 requests per 60 seconds per IP address
+- **Applies to**: All endpoints except those with specific overrides
+
+### Login Endpoint Rate Limit
+
+- **Endpoint**: `POST /api/auth/login`
+- **Limit**: 5 requests per 60 seconds per IP address
+- **Header**: Rate limit info returned in response headers
+
+When rate limit is exceeded:
+
+```json
+{
+  "statusCode": 429,
+  "message": "ThrottlerException: Too Many Requests"
+}
+```
+
+## CORS Configuration
+
+CORS is enabled with the following configuration:
+
+- **Allowed Origin**: Configured via `CORS_ORIGIN` environment variable (default: `http://localhost`)
+- **Credentials**: Enabled (`credentials: true`)
+
+## Validation
+
+All request DTOs use `class-validator` decorators with global validation pipe configured:
+
+```typescript
+{
+  whitelist: true,           // Strip unknown properties
+  forbidNonWhitelisted: true, // Reject requests with unknown properties
+  transform: true            // Auto-transform payloads to DTO instances
+}
+```
+
+## Health Check
+
+Check API availability:
+
+<CodeGroup>
+```bash Request
+curl http://localhost/api/health
+```
+
+```json Response
+{
+  "status": "ok",
+  "timestamp": "2026-03-13T10:30:00.000Z"
+}
+```
+</CodeGroup>
+
+## Module Status Endpoints
+
+Each module provides a status endpoint:
+
+- `GET /api/auth/status`
+- `GET /api/users/status`
+- `GET /api/clients/status`
+- `GET /api/work-orders/status`
+- `GET /api/materials/status`
+- `GET /api/quotations/status`
+- `GET /api/resources/status`
+- `GET /api/reports/status`
+
+**Example Response:**
+```json
+{
+  "module": "auth",
+  "status": "ready"
+}
+```
+
+## Pagination
+
+Endpoints that return lists support pagination via query parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number (default: 1) |
+| `limit` | number | Items per page (default: 10) |
+| `search` | string | Search term for filtering |
+
+**Example:**
+```bash
+GET /api/clients?page=1&limit=20&search=Acme
+```
+
+## Data Isolation
+
+All data is isolated by company:
+
+- Users can only access data for their own `companyId`
+- Company ID is extracted from the JWT token
+- Automatic filtering applied at the service layer
+
+## Role-Based Access Control
+
+The API implements role-based access control with the following roles:
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `DUENO` | Owner | Full access to all resources |
+| `ADMIN` | Administrator | Full access to all resources |
+| `SUPERVISOR` | Supervisor | Read/write access to operations |
+| `OPERARIO` | Operator | Limited access to assigned work orders |
+
+See [Authentication](/api/authentication) for details on role enforcement.

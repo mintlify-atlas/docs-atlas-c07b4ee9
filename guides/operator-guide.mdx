@@ -1,0 +1,214 @@
+---
+title: Operator Guide
+description: Guide for operators covering the "My Shift" view and executing assigned work orders
+icon: wrench
+---
+
+<Info>
+**For:** Workshop operators  
+**Access:** Only the "My Shift" screen  
+**What you can do:** View your assigned orders, record your work, and register materials you use
+</Info>
+
+## How to Log In
+
+<Steps>
+  <Step title="Open the system">
+    Open the browser and enter the address your supervisor gave you (e.g., `http://192.168.1.10`)
+  </Step>
+  
+  <Step title="Enter credentials">
+    Enter your **email** and **password**
+  </Step>
+  
+  <Step title="Click login">
+    Click **Login**
+  </Step>
+</Steps>
+
+<Note>
+If you forgot your password, ask the owner or supervisor to change it for you.
+</Note>
+
+## Main Screen — "My Shift"
+
+When you log in, you see the **My Shift** screen directly.
+
+Here you see **only the work orders assigned to you**.
+
+Each order card shows:
+- **Code** of the work order (e.g., `WO-0042`)
+- **Title** of the job
+- **Client** it's for
+- **Current status** (colored badge)
+- **Committed delivery date**
+- **Action buttons**
+
+## Work Order Statuses and Colors
+
+| Status | Color | Meaning |
+|--------|-------|----------|
+| PLANNED | Blue | Work order assigned to you, not started yet |
+| PENDING | Gray | Waiting for you to start |
+| IN PROCESS | Green | You are working on it |
+| PAUSED | Red | You stopped it temporarily |
+| COMPLETED | Dark green | Work finished |
+
+## Step by Step: How to Work a Work Order
+
+### ▶ Step 1 — Start the Work Order
+
+<Steps>
+  <Step title="Find your work order">
+    Look for the work order in your list
+  </Step>
+  
+  <Step title="Verify status">
+    Check that the status is **PLANNED** or **PENDING**
+  </Step>
+  
+  <Step title="Start work">
+    Click the **▶ Start** button
+  </Step>
+  
+  <Step title="Confirm status change">
+    The status changes to **IN PROCESS** (green) ✅
+  </Step>
+</Steps>
+
+<Warning>
+You can only start one work order at a time. If you already have one in process, the supervisor can reorganize them.
+</Warning>
+
+### ⏸ Step 2 — Pause (If You Need to Interrupt)
+
+If you need to stop temporarily (lunch, lack of material, etc.):
+
+<Steps>
+  <Step title="Locate active work order">
+    Find the work order that is **IN PROCESS**
+  </Step>
+  
+  <Step title="Pause it">
+    Click **⏸ Pause**
+  </Step>
+  
+  <Step title="Status changes">
+    The status changes to **PAUSED** (red)
+  </Step>
+</Steps>
+
+To **resume** a paused work order:
+
+<Steps>
+  <Step title="Find paused work order">
+    Look for it in your list (PAUSED status in red)
+  </Step>
+  
+  <Step title="Resume work">
+    Click **▶ Resume**
+  </Step>
+  
+  <Step title="Status changes">
+    The status returns to **IN PROCESS**
+  </Step>
+</Steps>
+
+### ✅ Step 3 — Complete the Work Order
+
+When you finish the work:
+
+<Steps>
+  <Step title="Complete work order">
+    Click **✅ Complete**
+  </Step>
+  
+  <Step title="Add closing note">
+    A confirmation window opens. You can add an optional **closing note** (e.g., "Completed according to specification")
+  </Step>
+  
+  <Step title="Confirm completion">
+    Confirm
+  </Step>
+</Steps>
+
+<Warning>
+The system records the exact completion time. Make sure to complete only when the work is **actually** finished.
+</Warning>
+
+## Register Consumed Materials
+
+While the work order is **IN PROCESS**, you can register which materials you used:
+
+<Steps>
+  <Step title="Find consumption section">
+    Look for the **Register consumption** section within the work order
+  </Step>
+  
+  <Step title="Search for material">
+    Search for the material in the search box (e.g., "rod", "paint")
+  </Step>
+  
+  <Step title="Enter quantity">
+    Enter the **quantity** used
+  </Step>
+  
+  <Step title="Register">
+    Click **Register**
+  </Step>
+</Steps>
+
+<Note>
+This is very important because it allows the supervisor and owner to know the actual cost of the work.
+</Note>
+
+## Add Notes or Comments
+
+You can leave notes about the work order at any time:
+
+<Steps>
+  <Step title="Find comment field">
+    Look for the **Add update / comment** field
+  </Step>
+  
+  <Step title="Write your note">
+    Write your note (e.g., "Missing material X, notified supervisor")
+  </Step>
+  
+  <Step title="Add comment">
+    Click **Add**
+  </Step>
+</Steps>
+
+These notes are recorded with your name and exact date/time.
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Why don't any work orders appear in my list?">
+    The supervisor hasn't assigned you work yet. Check with them.
+  </Accordion>
+  
+  <Accordion title="Can I see other operators' work orders?">
+    No. You only see your assigned orders.
+  </Accordion>
+  
+  <Accordion title="What if I made a mistake registering consumption?">
+    Notify the supervisor so they can correct it from their screen.
+  </Accordion>
+  
+  <Accordion title="Does the session close automatically?">
+    Yes, after 8 hours you need to log in again.
+  </Accordion>
+</AccordionGroup>
+
+## Quick Reference
+
+| Task | Action |
+|------|--------|
+| Start work | Click **▶ Start** on PLANNED/PENDING work order |
+| Pause work | Click **⏸ Pause** on IN PROCESS work order |
+| Resume work | Click **▶ Resume** on PAUSED work order |
+| Complete work | Click **✅ Complete** on IN PROCESS work order |
+| Record materials | Use **Register consumption** section |
+| Add comment | Use **Add update / comment** field |

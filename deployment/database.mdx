@@ -1,0 +1,461 @@
+---
+title: 'Database Setup'
+description: 'PostgreSQL configuration, Prisma migrations, backups, and database management for DRAIT Mini-MES'
+icon: 'database'
+---
+
+## Overview
+
+DRAIT Mini-MES uses PostgreSQL 16 as its primary database with Prisma as the ORM. This guide covers database setup, migrations, backups, and maintenance.
+
+## PostgreSQL Setup
+
+### Version Requirements
+
+- **PostgreSQL**: 16.x (Alpine Linux image in Docker)
+- **Prisma Client**: 5.22.0
+
+### Environment Variables
+
+Configure these variables in your `.env` file:
+
+```bash .env
+# Database credentials
+POSTGRES_DB=drait_mes
+POSTGRES_USER=drait
+POSTGRES_PASSWORD=drait123
+POSTGRES_PORT=5432
+
+# Prisma connection string
+DATABASE_URL=postgresql://drait:drait123@db:5432/drait_mes?schema=public
+```
+
+<Warning>
+  **Production Security**: Change the default database credentials before deploying to production. Use strong passwords (minimum 16 characters with mixed case, numbers, and symbols).
+</Warning>
+
+### Docker Compose Configuration
+
+The database service is defined in `docker-compose.yml:2-19`:
+
+```yaml
+services:
+  drait-db:
+    image: postgres:16-alpine
+    container_name: drait-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+```
+
+### Standalone PostgreSQL Installation
+
+If not using Docker:
+
+#### Ubuntu/Debian
+
+```bash
+# Install PostgreSQL 16
+sudo apt update
+sudo apt install -y postgresql-16 postgresql-contrib-16
+
+# Start the service
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Create database and user
+sudo -u postgres psql
+```
+
+```sql
+CREATE DATABASE drait_mes;
+CREATE USER drait WITH PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE drait_mes TO drait;
+\q
+```
+
+#### Configure Connection String
+
+```bash
+# For local PostgreSQL
+DATABASE_URL="postgresql://drait:your_secure_password@localhost:5432/drait_mes?schema=public"
+
+# For production with SSL
+DATABASE_URL="postgresql://drait:your_secure_password@host:5432/drait_mes?schema=public&sslmode=require"
+```
+
+## Prisma Configuration
+
+### Schema Location
+
+The Prisma schema is located at `apps/backend/prisma/schema.prisma`.
+
+### Key Schema Components
+
+**Generator configuration:**
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+```
+
+**Datasource configuration:**
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+### Database Schema Overview
+
+The schema includes:
+
+- **9 enums**: UserRole, QuotationStatus, WorkOrderStatus, ResourceType, ResourceStatus, OperationEventType, MaterialMovementType, AuditEntityType, AuditActionType
+- **14 models**: Company, User, Client, Quotation, QuotationItem, WorkOrder, Resource, WorkOrderAssignment, OperationLog, Material, MaterialMovement, MaterialConsumption, AuditLog
+
+<Note>
+  The schema uses Spanish enum values (e.g., `DUENO`, `OPERARIO`) which are normalized from English values during migration.
+</Note>
+
+## Prisma Commands
+
+### Available Scripts
+
+From `apps/backend/package.json:13-16`:
+
+```json
+"scripts": {
+  "prisma:generate": "prisma generate",
+  "prisma:normalize-enums": "prisma db execute --file prisma/enum-rename.sql --schema prisma/schema.prisma",
+  "prisma:migrate": "npm run prisma:normalize-enums && prisma db push",
+  "prisma:seed": "node dist/prisma/seed.js"
+}
+```
+
+### Generate Prisma Client
+
+Generates the TypeScript Prisma Client from your schema:
+
+```bash
+cd apps/backend
+npm run prisma:generate
+```
+
+Run this after:
+- Modifying `schema.prisma`
+- Pulling the repository for the first time
+- After `npm install`
+
+### Apply Migrations
+
+Push schema changes to the database:
+
+```bash
+cd apps/backend
+npm run prisma:migrate
+```
+
+This command:
+1. Executes `prisma/enum-rename.sql` to normalize enum values
+2. Runs `prisma db push` to sync schema with database
+
+<Warning>
+  `prisma db push` is used instead of `prisma migrate` for development. In production, consider using formal migrations with `prisma migrate deploy`.
+</Warning>
+
+### Seed the Database
+
+Populate the database with sample data:
+
+```bash
+cd apps/backend
+
+# Build first (seed requires compiled code)
+npm run build
+
+# Run seed
+npm run prisma:seed
+```
+
+The seed script (`apps/backend/prisma/seed.ts`) creates:
+- 1 company (Taller Metalúrgico DRAIT)
+- 7 users (owner, supervisor, 5 operators)
+- 6 clients
+- 10 resources (5 human, 5 machines)
+- 15 materials
+- 15 quotations
+- 30 work orders (spanning 6 months)
+- Operation logs and material consumptions
+
+**Default credentials:**
+- Owner: `owner@drait.local` / `ChangeMe123!`
+- Supervisor: `supervisor@drait.local` / `ChangeMe123!`
+- Operator: `lucas@drait.local` / `ChangeMe123!`
+
+### Enum Normalization
+
+The `prisma/enum-rename.sql` script normalizes English enum values to Spanish:
+
+```sql
+-- Example: UserRole normalization
+ALTER TYPE "UserRole" RENAME VALUE 'OWNER' TO 'DUENO';
+ALTER TYPE "UserRole" RENAME VALUE 'OPERATOR' TO 'OPERARIO';
+```
+
+This is necessary because Prisma generates enums in English, but the application uses Spanish values.
+
+### Prisma Studio
+
+Open a visual database browser:
+
+```bash
+cd apps/backend
+npx prisma studio
+```
+
+Access at: `http://localhost:5555`
+
+## Database Migrations
+
+### Development Workflow
+
+1. **Modify schema**: Edit `apps/backend/prisma/schema.prisma`
+2. **Generate client**: `npm run prisma:generate`
+3. **Apply changes**: `npm run prisma:migrate`
+4. **Test**: Verify changes in your application
+
+### Production Migration Strategy
+
+<Warning>
+  For production, use formal migrations instead of `db push`.
+</Warning>
+
+```bash
+# Create a migration
+cd apps/backend
+npx prisma migrate dev --name descriptive_migration_name
+
+# Deploy to production
+npx prisma migrate deploy
+```
+
+**Migration best practices:**
+- Test migrations on a staging database first
+- Back up the database before running migrations
+- Use descriptive migration names
+- Review generated SQL before deploying
+- Never edit migration files after they've been applied
+
+## Database Backups
+
+### Docker PostgreSQL Backup
+
+#### Manual Backup
+
+```bash
+# Backup to file
+docker exec drait-db pg_dump -U drait drait_mes > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Compressed backup
+docker exec drait-db pg_dump -U drait drait_mes | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+```
+
+#### Restore from Backup
+
+```bash
+# From SQL file
+docker exec -i drait-db psql -U drait -d drait_mes < backup_20260313_120000.sql
+
+# From compressed file
+gunzip -c backup_20260313_120000.sql.gz | docker exec -i drait-db psql -U drait -d drait_mes
+```
+
+### Automated Backup Script
+
+Create a backup script:
+
+```bash backup.sh
+#!/bin/bash
+BACKUP_DIR="/var/backups/drait_mes"
+DATABASE="drait_mes"
+USER="drait"
+CONTAINER="drait-db"
+RETENTION_DAYS=30
+
+mkdir -p $BACKUP_DIR
+FILENAME="$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S).sql.gz"
+
+# Create backup
+docker exec $CONTAINER pg_dump -U $USER $DATABASE | gzip > $FILENAME
+
+# Delete old backups
+find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
+
+echo "Backup completed: $FILENAME"
+```
+
+Schedule with cron:
+
+```bash
+# Daily backup at 2 AM
+0 2 * * * /path/to/backup.sh >> /var/log/drait_backup.log 2>&1
+```
+
+### Standalone PostgreSQL Backup
+
+```bash
+# Manual backup
+pg_dump -U drait -h localhost drait_mes > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Restore
+psql -U drait -h localhost -d drait_mes < backup_20260313_120000.sql
+```
+
+## Performance Optimization
+
+### Database Indexes
+
+The schema includes strategic indexes for performance (`apps/backend/prisma/schema.prisma`):
+
+```prisma
+model Company {
+  // ...
+  @@index([name])
+}
+
+model User {
+  // ...
+  @@index([companyId, role])
+}
+
+model WorkOrder {
+  // ...
+  @@index([companyId, status])
+  @@index([companyId, commitmentDate])
+}
+```
+
+### Connection Pooling
+
+Prisma automatically manages connection pooling. For production, consider:
+
+```bash
+# Increase connection limit
+DATABASE_URL="postgresql://user:pass@host:5432/db?schema=public&connection_limit=20"
+```
+
+### Query Optimization
+
+Use Prisma's query optimization features:
+
+```typescript
+// Select only needed fields
+await prisma.workOrder.findMany({
+  select: { id: true, code: true, status: true }
+});
+
+// Use include for relations
+await prisma.workOrder.findMany({
+  include: { client: true, quotation: true }
+});
+```
+
+## Monitoring and Maintenance
+
+### Health Checks
+
+The Docker service includes a health check:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+```
+
+### Database Statistics
+
+```sql
+-- Check database size
+SELECT pg_size_pretty(pg_database_size('drait_mes'));
+
+-- Table sizes
+SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename))
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- Active connections
+SELECT count(*) FROM pg_stat_activity WHERE datname = 'drait_mes';
+```
+
+### Vacuum and Analyze
+
+Run periodically to optimize performance:
+
+```bash
+# Docker
+docker exec drait-db psql -U drait -d drait_mes -c "VACUUM ANALYZE;"
+
+# Standalone
+psql -U drait -d drait_mes -c "VACUUM ANALYZE;"
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+**Error: "Can't reach database server"**
+
+```bash
+# Check if container is running
+docker ps | grep drait-db
+
+# Check logs
+docker logs drait-db
+
+# Verify connection string
+echo $DATABASE_URL
+```
+
+### Migration Conflicts
+
+**Error: "Schema already exists"**
+
+```bash
+# Reset database (WARNING: deletes all data)
+cd apps/backend
+npx prisma migrate reset
+```
+
+### Enum Synchronization Issues
+
+If you see enum-related errors:
+
+```bash
+cd apps/backend
+npm run prisma:normalize-enums
+npm run prisma:generate
+```
+
+## Related Documentation
+
+- [Security Configuration](/deployment/security) - Database security best practices
+- [Production Checklist](/deployment/production-checklist) - Pre-deployment database tasks
+- [Development Guide](/deployment/docker-setup) - Local database setup

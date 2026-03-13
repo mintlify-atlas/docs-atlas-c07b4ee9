@@ -1,0 +1,435 @@
+---
+title: 'Users API'
+description: 'User management endpoints for creating, updating, and managing user accounts'
+---
+
+## Overview
+
+The Users API provides endpoints for managing user accounts within your company. All endpoints require authentication and most require elevated permissions (DUENO or ADMIN roles).
+
+## GET /users
+
+Retrieve a list of all users in your company.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Query Parameters
+
+<ParamField query="role" type="string">
+  Filter users by role. Values: `DUENO`, `SUPERVISOR`, `OPERARIO`, `ADMIN`.
+</ParamField>
+
+<ParamField query="active" type="string">
+  Filter by active status. Values: `true`, `false`.
+</ParamField>
+
+### Response
+
+Returns an array of user objects.
+
+<ResponseField name="id" type="string">
+  User's unique identifier (CUID).
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email address.
+</ResponseField>
+
+<ResponseField name="fullName" type="string">
+  User's full name.
+</ResponseField>
+
+<ResponseField name="role" type="UserRole">
+  User's role: `DUENO`, `SUPERVISOR`, `OPERARIO`, or `ADMIN`.
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the user account is active.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of account creation.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of last update.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.example.com/users?role=OPERARIO&active=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "email": "operario1@empresa.com",
+    "fullName": "Carlos Rodríguez",
+    "role": "OPERARIO",
+    "isActive": true,
+    "createdAt": "2026-02-15T09:20:00.000Z",
+    "updatedAt": "2026-03-10T14:30:00.000Z"
+  },
+  {
+    "id": "clx2b3c4d5e6f7g8h9i0j1k2",
+    "email": "operario2@empresa.com",
+    "fullName": "María González",
+    "role": "OPERARIO",
+    "isActive": true,
+    "createdAt": "2026-03-01T11:15:00.000Z",
+    "updatedAt": "2026-03-01T11:15:00.000Z"
+  }
+]
+```
+
+---
+
+## POST /users
+
+Create a new user account.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `ADMIN`
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address. Must be unique within the company.
+</ParamField>
+
+<ParamField body="fullName" type="string" required>
+  User's full name.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Initial password. Minimum length: 6 characters.
+</ParamField>
+
+<ParamField body="role" type="UserRole" required>
+  User's role. Values: `DUENO`, `SUPERVISOR`, `OPERARIO`, `ADMIN`.
+</ParamField>
+
+### Response
+
+Returns the created user object (without password hash).
+
+### Example Request
+
+```bash
+curl -X POST https://api.example.com/users \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "nuevo.operario@empresa.com",
+    "fullName": "Pedro Martínez",
+    "password": "securepass123",
+    "role": "OPERARIO"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx3c4d5e6f7g8h9i0j1k2l3",
+  "email": "nuevo.operario@empresa.com",
+  "fullName": "Pedro Martínez",
+  "role": "OPERARIO",
+  "isActive": true,
+  "companyId": "clx0a1b2c3d4e5f6g7h8i9j0",
+  "createdAt": "2026-03-13T15:45:00.000Z",
+  "updatedAt": "2026-03-13T15:45:00.000Z"
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface CreateUserDto {
+  email: string;      // Valid email format
+  fullName: string;
+  password: string;   // Minimum 6 characters
+  role: 'DUENO' | 'SUPERVISOR' | 'OPERARIO' | 'ADMIN';
+}
+```
+
+---
+
+## PATCH /users/toggle-active
+
+Toggle a user's active status (activate/deactivate).
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `ADMIN`
+
+### Request Body
+
+<ParamField body="id" type="string" required>
+  ID of the user to toggle.
+</ParamField>
+
+### Response
+
+Returns the updated user object.
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.example.com/users/toggle-active \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "clx1a2b3c4d5e6f7g8h9i0j1"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "email": "operario1@empresa.com",
+  "fullName": "Carlos Rodríguez",
+  "role": "OPERARIO",
+  "isActive": false,
+  "updatedAt": "2026-03-13T16:00:00.000Z"
+}
+```
+
+---
+
+## PATCH /users/:id/role
+
+Update a user's role.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  User ID to update.
+</ParamField>
+
+### Request Body
+
+<ParamField body="role" type="UserRole" required>
+  New role. Values: `DUENO`, `SUPERVISOR`, `OPERARIO`, `ADMIN`.
+</ParamField>
+
+### Response
+
+Returns the updated user object.
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.example.com/users/clx1a2b3c4d5e6f7g8h9i0j1/role \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "SUPERVISOR"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "email": "operario1@empresa.com",
+  "fullName": "Carlos Rodríguez",
+  "role": "SUPERVISOR",
+  "isActive": true,
+  "updatedAt": "2026-03-13T16:15:00.000Z"
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface UpdateUserRoleDto {
+  role: 'DUENO' | 'SUPERVISOR' | 'OPERARIO' | 'ADMIN';
+}
+```
+
+---
+
+## PATCH /users/:id/profile
+
+Update a user's profile information (name and email).
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  User ID to update.
+</ParamField>
+
+### Request Body
+
+<ParamField body="fullName" type="string">
+  Updated full name. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Updated email address. Must be valid email format.
+</ParamField>
+
+### Response
+
+Returns the updated user object.
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.example.com/users/clx1a2b3c4d5e6f7g8h9i0j1/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullName": "Carlos Alberto Rodríguez",
+    "email": "carlos.rodriguez@empresa.com"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "email": "carlos.rodriguez@empresa.com",
+  "fullName": "Carlos Alberto Rodríguez",
+  "role": "SUPERVISOR",
+  "isActive": true,
+  "updatedAt": "2026-03-13T16:30:00.000Z"
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface UpdateUserProfileDto {
+  fullName?: string;  // Optional, max 120 chars
+  email?: string;     // Optional, valid email format
+}
+```
+
+---
+
+## PATCH /users/:id/password
+
+Update a user's password.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  User ID to update.
+</ParamField>
+
+### Request Body
+
+<ParamField body="password" type="string" required>
+  New password. Minimum length: 6 characters.
+</ParamField>
+
+### Response
+
+Returns success message.
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.example.com/users/clx1a2b3c4d5e6f7g8h9i0j1/password \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "newSecurePassword456"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Password updated successfully"
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface UpdateUserPasswordDto {
+  password: string;  // Minimum 6 characters
+}
+```
+
+---
+
+## GET /users/status
+
+Check the users service health status.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Response
+
+<ResponseField name="status" type="string">
+  Service status indicator.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/users/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "status": "ok",
+  "service": "users"
+}
+```
+
+## Error Responses
+
+### 403 Forbidden
+Returned when user lacks required role permissions.
+
+```json
+{
+  "statusCode": 403,
+  "message": "Forbidden resource"
+}
+```
+
+### 409 Conflict
+Returned when email already exists.
+
+```json
+{
+  "statusCode": 409,
+  "message": "Email already in use"
+}
+```

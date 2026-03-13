@@ -1,0 +1,474 @@
+---
+title: 'Reports API'
+description: 'Dashboard and reporting endpoints for analytics and KPIs'
+---
+
+## Overview
+
+The Reports API provides aggregated data and analytics for dashboards and business intelligence. All endpoints require authentication.
+
+## GET /reports/dashboard
+
+Retrieve dashboard summary with key performance indicators (KPIs).
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Response
+
+Returns a dashboard object with various metrics.
+
+<ResponseField name="workOrders" type="object">
+  Work order statistics.
+  
+  <ResponseField name="total" type="number">
+    Total number of work orders.
+  </ResponseField>
+  
+  <ResponseField name="pending" type="number">
+    Work orders in `PENDIENTE` status.
+  </ResponseField>
+  
+  <ResponseField name="inProgress" type="number">
+    Work orders in `EN_PROCESO` status.
+  </ResponseField>
+  
+  <ResponseField name="paused" type="number">
+    Work orders in `PAUSADA` status.
+  </ResponseField>
+  
+  <ResponseField name="finished" type="number">
+    Work orders in `FINALIZADA` status.
+  </ResponseField>
+  
+  <ResponseField name="delivered" type="number">
+    Work orders in `ENTREGADA` status.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="quotations" type="object">
+  Quotation statistics.
+  
+  <ResponseField name="total" type="number">
+    Total number of quotations.
+  </ResponseField>
+  
+  <ResponseField name="draft" type="number">
+    Quotations in `BORRADOR` status.
+  </ResponseField>
+  
+  <ResponseField name="sent" type="number">
+    Quotations in `ENVIADO` status.
+  </ResponseField>
+  
+  <ResponseField name="approved" type="number">
+    Quotations in `APROBADO` status.
+  </ResponseField>
+  
+  <ResponseField name="rejected" type="number">
+    Quotations in `RECHAZADO` status.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="resources" type="object">
+  Resource availability statistics.
+  
+  <ResponseField name="total" type="number">
+    Total active resources.
+  </ResponseField>
+  
+  <ResponseField name="available" type="number">
+    Resources in `DISPONIBLE` status.
+  </ResponseField>
+  
+  <ResponseField name="busy" type="number">
+    Resources in `OCUPADO` status.
+  </ResponseField>
+  
+  <ResponseField name="maintenance" type="number">
+    Resources in `MANTENIMIENTO` status.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="materials" type="object">
+  Material inventory statistics.
+  
+  <ResponseField name="total" type="number">
+    Total number of materials.
+  </ResponseField>
+  
+  <ResponseField name="lowStock" type="number">
+    Materials with stock below threshold (optional, if implemented).
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="recentActivity" type="array">
+  Recent activity log (optional, last 10-20 events).
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/reports/dashboard \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "workOrders": {
+    "total": 156,
+    "pending": 12,
+    "planned": 8,
+    "inProgress": 15,
+    "paused": 3,
+    "finished": 18,
+    "delivered": 95,
+    "cancelled": 5
+  },
+  "quotations": {
+    "total": 89,
+    "draft": 5,
+    "sent": 12,
+    "approved": 58,
+    "rejected": 14
+  },
+  "resources": {
+    "total": 24,
+    "available": 14,
+    "busy": 8,
+    "maintenance": 2,
+    "offline": 0
+  },
+  "materials": {
+    "total": 47,
+    "lowStock": 5
+  },
+  "clients": {
+    "total": 32,
+    "active": 28
+  },
+  "recentActivity": [
+    {
+      "type": "WORK_ORDER_STATUS_CHANGE",
+      "workOrderCode": "OT-2026-045",
+      "status": "FINALIZADA",
+      "timestamp": "2026-03-13T14:30:00.000Z",
+      "user": "Carlos Rodríguez"
+    },
+    {
+      "type": "QUOTATION_APPROVED",
+      "quotationCode": "Q-2026-018",
+      "client": "Constructora del Sur SA",
+      "timestamp": "2026-03-13T11:15:00.000Z",
+      "user": "Juan Pérez"
+    },
+    {
+      "type": "MATERIAL_CONSUMED",
+      "material": "Perfil IPE 200",
+      "quantity": 125.5,
+      "unit": "kg",
+      "workOrderCode": "OT-2026-044",
+      "timestamp": "2026-03-13T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+## GET /reports/productivity
+
+Retrieve productivity report with detailed filtering options.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Query Parameters
+
+<ParamField query="from" type="string">
+  Start date for the report period (ISO 8601 format, e.g., "2026-03-01").
+</ParamField>
+
+<ParamField query="to" type="string">
+  End date for the report period (ISO 8601 format, e.g., "2026-03-31").
+</ParamField>
+
+<ParamField query="clientId" type="string">
+  Filter by specific client ID.
+</ParamField>
+
+<ParamField query="operatorId" type="string">
+  Filter by specific operator/user ID.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by work order status.
+</ParamField>
+
+### Response
+
+Returns productivity metrics and statistics.
+
+<ResponseField name="summary" type="object">
+  Summary statistics for the period.
+  
+  <ResponseField name="totalWorkOrders" type="number">
+    Total work orders in the period.
+  </ResponseField>
+  
+  <ResponseField name="completedWorkOrders" type="number">
+    Completed work orders.
+  </ResponseField>
+  
+  <ResponseField name="totalEstimatedHours" type="number">
+    Sum of estimated hours (in minutes).
+  </ResponseField>
+  
+  <ResponseField name="totalActualHours" type="number">
+    Sum of actual hours worked (in minutes).
+  </ResponseField>
+  
+  <ResponseField name="averageEfficiency" type="number">
+    Average efficiency percentage (actual vs estimated).
+  </ResponseField>
+  
+  <ResponseField name="totalRevenue" type="number">
+    Total estimated revenue/cost.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="byClient" type="array">
+  Breakdown by client.
+  
+  <ResponseField name="clientId" type="string">
+    Client ID.
+  </ResponseField>
+  
+  <ResponseField name="clientName" type="string">
+    Client name.
+  </ResponseField>
+  
+  <ResponseField name="workOrders" type="number">
+    Number of work orders.
+  </ResponseField>
+  
+  <ResponseField name="revenue" type="number">
+    Total revenue from this client.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="byOperator" type="array">
+  Breakdown by operator/user.
+  
+  <ResponseField name="userId" type="string">
+    User ID.
+  </ResponseField>
+  
+  <ResponseField name="userName" type="string">
+    User full name.
+  </ResponseField>
+  
+  <ResponseField name="assignedWorkOrders" type="number">
+    Work orders assigned to this operator.
+  </ResponseField>
+  
+  <ResponseField name="completedWorkOrders" type="number">
+    Work orders completed.
+  </ResponseField>
+  
+  <ResponseField name="totalHours" type="number">
+    Total hours worked (in minutes).
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="workOrders" type="array">
+  Detailed list of work orders in the period (optional, based on filters).
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.example.com/reports/productivity?from=2026-03-01&to=2026-03-31" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "summary": {
+    "totalWorkOrders": 45,
+    "completedWorkOrders": 38,
+    "totalEstimatedHours": 108000,
+    "totalActualHours": 115200,
+    "averageEfficiency": 93.75,
+    "totalRevenue": 4250000.00,
+    "period": {
+      "from": "2026-03-01T00:00:00.000Z",
+      "to": "2026-03-31T23:59:59.999Z"
+    }
+  },
+  "byClient": [
+    {
+      "clientId": "clx0a1b2c3d4e5f6g7h8i9j0",
+      "clientName": "Constructora del Sur SA",
+      "workOrders": 12,
+      "completedWorkOrders": 10,
+      "revenue": 1850000.00,
+      "estimatedHours": 28800,
+      "actualHours": 30600
+    },
+    {
+      "clientId": "clx1a2b3c4d5e6f7g8h9i0j1",
+      "clientName": "Metalurgica Norte",
+      "workOrders": 8,
+      "completedWorkOrders": 8,
+      "revenue": 950000.00,
+      "estimatedHours": 19200,
+      "actualHours": 18000
+    }
+  ],
+  "byOperator": [
+    {
+      "userId": "clx4d5e6f7g8h9i0j1k2l3m4",
+      "userName": "Carlos Rodríguez",
+      "role": "OPERARIO",
+      "assignedWorkOrders": 15,
+      "completedWorkOrders": 13,
+      "totalHours": 38400,
+      "efficiency": 95.2
+    },
+    {
+      "userId": "clx5e6f7g8h9i0j1k2l3m4n5",
+      "userName": "María González",
+      "role": "OPERARIO",
+      "assignedWorkOrders": 12,
+      "completedWorkOrders": 11,
+      "totalHours": 28800,
+      "efficiency": 91.7
+    }
+  ],
+  "byResource": [
+    {
+      "resourceId": "clx3c4d5e6f7g8h9i0j1k2l3",
+      "resourceName": "Soldadora MIG 250A",
+      "resourceType": "MAQUINA",
+      "workOrders": 18,
+      "utilizationHours": 57600,
+      "utilizationPercentage": 80.0
+    }
+  ],
+  "timeline": [
+    {
+      "date": "2026-03-01",
+      "workOrdersStarted": 3,
+      "workOrdersCompleted": 2,
+      "hoursWorked": 3840
+    },
+    {
+      "date": "2026-03-02",
+      "workOrdersStarted": 2,
+      "workOrdersCompleted": 3,
+      "hoursWorked": 4200
+    }
+  ]
+}
+```
+
+### Example Request - Filter by Client
+
+```bash
+curl -X GET "https://api.example.com/reports/productivity?from=2026-03-01&to=2026-03-31&clientId=clx0a1b2c3d4e5f6g7h8i9j0" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Request - Filter by Operator
+
+```bash
+curl -X GET "https://api.example.com/reports/productivity?from=2026-02-01&to=2026-02-29&operatorId=clx4d5e6f7g8h9i0j1k2l3m4" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## GET /reports/status
+
+Check the reports service health status.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/reports/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "status": "ok",
+  "service": "reports"
+}
+```
+
+## Report Types
+
+### Dashboard Report
+- **Purpose**: Real-time overview of operations
+- **Use Case**: Main dashboard display, operations monitoring
+- **Update Frequency**: Real-time
+- **Data Scope**: Current state of all entities
+
+### Productivity Report
+- **Purpose**: Analyze performance over time periods
+- **Use Case**: Performance reviews, capacity planning, billing
+- **Update Frequency**: Historical analysis
+- **Data Scope**: Time-based aggregations with filtering
+
+## Key Metrics Explained
+
+### Efficiency
+Calculated as: `(Estimated Hours / Actual Hours) × 100`
+- **> 100%**: Work completed faster than estimated (efficient)
+- **= 100%**: Work completed exactly as estimated
+- **< 100%**: Work took longer than estimated (inefficient)
+
+### Utilization
+Calculated as: `(Busy Hours / Total Available Hours) × 100`
+- Shows how much time resources are actively working
+- Helps identify underutilized or overutilized resources
+
+### Revenue
+Sum of `estimatedCost` from all work orders in the period
+- Based on estimated costs (actual costs can be calculated from material consumptions)
+
+## Date Range Filtering
+
+When using `from` and `to` parameters:
+- Dates are inclusive (includes both start and end dates)
+- Use ISO 8601 format: `YYYY-MM-DD` or full timestamp
+- If omitted, defaults to current month or all-time (implementation-dependent)
+
+## Performance Considerations
+
+Productivity reports can be resource-intensive for large datasets:
+- Use date ranges to limit data volume
+- Filter by client or operator for focused analysis
+- Consider caching results for frequently requested periods
+
+## Error Responses
+
+### 400 Bad Request
+Returned when date parameters are invalid.
+
+```json
+{
+  "statusCode": 400,
+  "message": "Invalid date format. Use ISO 8601 (YYYY-MM-DD)"
+}
+```

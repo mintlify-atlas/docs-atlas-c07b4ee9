@@ -1,0 +1,490 @@
+---
+title: Reports & Analytics
+description: Dashboard KPIs, productivity analysis, and operational insights
+icon: chart-line
+---
+
+## Overview
+
+The Reports module provides comprehensive analytics and KPIs for management decision-making. It includes executive dashboards, productivity reports with deviation analysis, and operational metrics across work orders, resources, and materials.
+
+<CardGroup cols={2}>
+  <Card title="Executive Dashboard" icon="gauge-high">
+    Real-time KPIs: open orders, delays, operator load, financial metrics
+  </Card>
+  <Card title="Productivity Analysis" icon="chart-column">
+    Time and cost deviation tracking per work order
+  </Card>
+  <Card title="Financial Insights" icon="sack-dollar">
+    Revenue, margins, material costs, and profitability analysis
+  </Card>
+  <Card title="Visual Charts" icon="chart-pie">
+    Interactive charts with Recharts: lines, bars, pie, and trend analysis
+  </Card>
+</CardGroup>
+
+---
+
+## API Endpoints
+
+### Dashboard KPIs
+
+```http
+GET /reports/dashboard
+```
+
+**Query Parameters:**
+
+<ParamField query="months" type="integer" optional>
+  Number of months to include in analysis: `3`, `6`, or `12` (default)
+</ParamField>
+
+**Response:**
+
+```json
+{
+  "kpis": {
+    "openCount": 15,
+    "inProcessCount": 8,
+    "finishedCount": 42,
+    "delayedCount": 3,
+    "hoursToday": 127.5,
+    "operatorsActive": 12,
+    "estimatedVsReal": {
+      "estimatedTotal": 1850.0,
+      "realTotal": 1920.5
+    },
+    "alerts": {
+      "total": 5,
+      "warning": 3,
+      "critical": 2
+    }
+  },
+  "managementAnnual": {
+    "periodLabel": "Últimos 12 meses",
+    "closedOrders": 156,
+    "avgHoursPerOrder": 38.5,
+    "revenueEstimated": 28500000.00,
+    "materialCostReal": 12300000.00,
+    "gainEstimated": 14200000.00,
+    "lossEstimated": 1800000.00,
+    "marginEstimated": 12400000.00
+  },
+  "monthlyManagement": [
+    {
+      "monthKey": "2026-01",
+      "monthLabel": "Ene 2026",
+      "closedOrders": 12,
+      "avgHours": 42.3,
+      "revenue": 2100000.00,
+      "materialCost": 950000.00,
+      "gain": 1050000.00,
+      "loss": 100000.00
+    }
+  ],
+  "statusBreakdown": [
+    { "status": "PENDIENTE", "count": 5 },
+    { "status": "EN_PROCESO", "count": 8 },
+    { "status": "FINALIZADA", "count": 42 }
+  ],
+  "deviationAlerts": [
+    {
+      "id": "wo123",
+      "code": "OT-2026-045",
+      "client": "Industria Aceros SA",
+      "severity": "critical",
+      "reasons": ["Horas excedidas +45%", "Costo materiales +35%"]
+    }
+  ],
+  "recentOrders": [
+    {
+      "id": "wo456",
+      "code": "OT-2026-048",
+      "title": "Fabricación tanque",
+      "status": "EN_PROCESO",
+      "client": { "name": "MetalCorp" }
+    }
+  ],
+  "delayedOrders": [
+    {
+      "id": "wo789",
+      "code": "OT-2026-042",
+      "title": "Estructura galpón",
+      "commitmentDate": "2026-03-10T23:59:59Z"
+    }
+  ],
+  "operatorLoad": [
+    {
+      "userId": "user123",
+      "fullName": "García, Juan",
+      "count": 4
+    }
+  ]
+}
+```
+
+### Productivity Report
+
+```http
+GET /reports/productivity
+```
+
+**Query Parameters:**
+
+<ParamField query="from" type="date" optional>
+  Start date filter (ISO format: `YYYY-MM-DD`)
+</ParamField>
+
+<ParamField query="to" type="date" optional>
+  End date filter (ISO format: `YYYY-MM-DD`)
+</ParamField>
+
+<ParamField query="clientId" type="string" optional>
+  Filter by specific client
+</ParamField>
+
+<ParamField query="operatorId" type="string" optional>
+  Filter by specific operator/user
+</ParamField>
+
+<ParamField query="status" type="string" optional>
+  Filter by work order status
+</ParamField>
+
+**Response:**
+
+```json
+{
+  "thresholds": {
+    "warningTimeDeviationPct": 20,
+    "criticalTimeDeviationPct": 40,
+    "warningCostDeviationPct": 15,
+    "criticalCostDeviationPct": 30
+  },
+  "alerts": [
+    {
+      "id": "wo123",
+      "code": "OT-2026-045",
+      "client": "Industria Aceros SA",
+      "alertSeverity": "critical",
+      "timeDeviationPct": 45.2,
+      "costDeviationPct": 32.8
+    }
+  ],
+  "hoursByOrder": [
+    {
+      "id": "wo123",
+      "code": "OT-2026-045",
+      "status": "FINALIZADA",
+      "client": "Industria Aceros SA",
+      "estimatedHours": 60.0,
+      "workedHours": 87.2,
+      "estimatedCost": 250000.00,
+      "realMaterialCost": 332000.00,
+      "timeDeviationHours": 27.2,
+      "costDeviation": 82000.00,
+      "timeDeviationPct": 45.3,
+      "costDeviationPct": 32.8,
+      "alertSeverity": "critical"
+    }
+  ],
+  "hoursByOperator": [
+    {
+      "operator": "García, Juan",
+      "hours": 187.5
+    }
+  ],
+  "overdueOrders": [
+    {
+      "id": "wo789",
+      "code": "OT-2026-042",
+      "client": "MetalCorp",
+      "status": "EN_PROCESO",
+      "commitmentDate": "2026-03-10T23:59:59Z"
+    }
+  ],
+  "totals": {
+    "orders": 156,
+    "estimatedCost": 28500000.00,
+    "realMaterialCost": 12300000.00
+  }
+}
+```
+
+---
+
+## Dashboard KPIs Explained
+
+### Production Status KPIs
+
+<ParamField path="kpis.openCount" type="integer">
+  Total work orders currently open (not delivered/cancelled)
+</ParamField>
+
+<ParamField path="kpis.inProcessCount" type="integer">
+  Work orders actively in production (status: `EN_PROCESO`)
+</ParamField>
+
+<ParamField path="kpis.finishedCount" type="integer">
+  Work orders completed in selected period (status: `FINALIZADA` or `ENTREGADA`)
+</ParamField>
+
+<ParamField path="kpis.delayedCount" type="integer">
+  Work orders past their commitment date
+</ParamField>
+
+<ParamField path="kpis.hoursToday" type="decimal">
+  Total hours worked today across all operators
+</ParamField>
+
+<ParamField path="kpis.operatorsActive" type="integer">
+  Number of operators currently assigned to work orders
+</ParamField>
+
+### Financial KPIs
+
+<ParamField path="managementAnnual.revenueEstimated" type="decimal">
+  Total estimated revenue from closed work orders
+</ParamField>
+
+<ParamField path="managementAnnual.materialCostReal" type="decimal">
+  Actual material costs consumed (from MaterialConsumption records)
+</ParamField>
+
+<ParamField path="managementAnnual.gainEstimated" type="decimal">
+  Estimated profit from work orders completed under budget
+</ParamField>
+
+<ParamField path="managementAnnual.lossEstimated" type="decimal">
+  Estimated loss from work orders over budget
+</ParamField>
+
+<ParamField path="managementAnnual.marginEstimated" type="decimal">
+  Net margin: gain minus loss
+</ParamField>
+
+### Alerts
+
+<ParamField path="kpis.alerts.total" type="integer">
+  Total deviation alerts (warning + critical)
+</ParamField>
+
+<ParamField path="kpis.alerts.warning" type="integer">
+  Work orders exceeding warning thresholds
+</ParamField>
+
+<ParamField path="kpis.alerts.critical" type="integer">
+  Work orders exceeding critical thresholds
+</ParamField>
+
+---
+
+## Productivity Report Metrics
+
+### Deviation Analysis
+
+The system calculates time and cost deviations for each work order:
+
+**Time Deviation:**
+```
+timeDeviationHours = workedHours - estimatedHours
+timeDeviationPct = (timeDeviationHours / estimatedHours) × 100
+```
+
+**Cost Deviation:**
+```
+costDeviation = realMaterialCost - estimatedCost
+costDeviationPct = (costDeviation / estimatedCost) × 100
+```
+
+### Alert Severity Levels
+
+<Steps>
+  <Step title="ok">
+    Within thresholds:
+    - Time deviation < 20%
+    - Cost deviation < 15%
+  </Step>
+  <Step title="warning">
+    Moderate deviation:
+    - Time deviation 20-40%
+    - Cost deviation 15-30%
+  </Step>
+  <Step title="critical">
+    Severe deviation:
+    - Time deviation > 40%
+    - Cost deviation > 30%
+  </Step>
+</Steps>
+
+### Worked Hours Calculation
+
+Worked hours are computed from `OperationLog` events:
+- Sum time between `INICIO` and `FINALIZACION` events
+- Exclude time during `PAUSA` periods
+- Convert minutes to hours (divide by 60)
+
+---
+
+## Frontend Visualization
+
+### Dashboard Page Components
+
+The `DashboardPage.tsx` renders:
+
+<Tabs>
+  <Tab title="KPI Cards">
+    **Production Status:**
+    - Órdenes abiertas (blue)
+    - En proceso ahora (cyan)
+    - Atrasadas (red)
+    - Cerradas (green)
+    - Tiempo prom./OT (orange)
+    - Operarios activos (purple)
+    
+    **Financial Summary:**
+    - Facturación estimada
+    - Ganancia estimada (green)
+    - Pérdida estimada (red)
+    - Costo real materiales
+    - Margen neto estimado (green/red)
+  </Tab>
+  
+  <Tab title="Charts">
+    **Line Chart - Production Trend:**
+    - X-axis: Months
+    - Y-axis: OTs closed + Avg hours per OT
+    - Shows production volume and efficiency trends
+    
+    **Pie Chart - Status Breakdown:**
+    - Distribution of work orders by status
+    - Interactive tooltips with percentages
+    
+    **Bar Chart - Revenue vs Material Cost:**
+    - Monthly comparison
+    - Blue bars: Estimated revenue
+    - Orange bars: Material costs
+    
+    **Bar Chart - Margin Analysis:**
+    - Green bars: Gains
+    - Red bars: Losses
+    - Shows profitability trends
+  </Tab>
+  
+  <Tab title="Alert Lists">
+    **Deviation Alerts:**
+    - Critical (🔴) and warning (🟡) badges
+    - Shows OT code, client, and deviation reasons
+    - Sortable and filterable
+    
+    **Delayed Orders:**
+    - Work orders past commitment date
+    - Red background with date highlighted
+  </Tab>
+  
+  <Tab title="Operator Load">
+    Horizontal bar chart showing:
+    - Operator name
+    - Number of assigned work orders
+    - Visual bar for relative load comparison
+  </Tab>
+</Tabs>
+
+### Reports Page Components
+
+The `ReportsPage.tsx` provides:
+
+**Productivity Table:**
+- Sortable columns: OT, Client, Estimated Hours, Real Hours, Time Δ%, Cost Δ%
+- Color-coded deviations:
+  - Green: Within thresholds
+  - Orange: Warning level
+  - Red: Critical level
+- Status badges per work order
+
+**Filters:**
+- Search by OT code or client
+- Filter by work order status
+- Date range selection (future enhancement)
+
+**Side Panels:**
+- Overdue orders list
+- Hours distribution by operator
+- Threshold configuration display
+
+---
+
+## Period Selection
+
+The dashboard supports 3 time periods:
+
+| Period | Months | Use Case |
+|--------|--------|----------|
+| 3M | 3 months | Short-term trends, quarterly review |
+| 6M | 6 months | Mid-term analysis, semester performance |
+| 12M | 12 months | Annual overview, year-over-year comparison |
+
+Period selection affects:
+- `managementAnnual` totals
+- `monthlyManagement` array length
+- Chart data displayed
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="KPI Monitoring">
+    **Daily checks:**
+    - Delayed count (address overdue orders)
+    - Critical alerts (investigate severe deviations)
+    - In-process count (manage workload)
+    
+    **Weekly review:**
+    - Average hours per OT (identify efficiency trends)
+    - Operator load distribution (balance assignments)
+    - Material cost trends (catch cost increases early)
+    
+    **Monthly analysis:**
+    - Financial margins (profitability assessment)
+    - Productivity deviations (process improvements)
+    - Status distribution (workflow optimization)
+  </Accordion>
+  
+  <Accordion title="Deviation Management">
+    **When critical alerts appear:**
+    1. Review work order details in depth
+    2. Analyze operation logs for delays/pauses
+    3. Compare material consumption vs. estimates
+    4. Document lessons learned
+    5. Adjust future quotations accordingly
+    
+    **Threshold tuning:**
+    - Warning thresholds: 20% time, 15% cost (default)
+    - Critical thresholds: 40% time, 30% cost (default)
+    - Adjust based on your industry standards
+  </Accordion>
+  
+  <Accordion title="Chart Interpretation">
+    **Line charts:**
+    - Rising avg hours/OT → complexity increasing
+    - Declining closed orders → capacity issues
+    
+    **Bar charts:**
+    - Revenue > material cost → healthy margin
+    - Material cost approaching revenue → pricing review needed
+    
+    **Pie charts:**
+    - High "Pausada" percentage → investigate bottlenecks
+    - Low "Entregada" → delivery process issues
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Features
+
+- [Work Orders](/features/work-orders) - Core data source for productivity analysis
+- [Materials](/features/materials) - Material cost data for financial KPIs
+- [Resources](/features/resources) - Operator load and utilization metrics
+- [Audit Log](/features/audit) - Detailed traceability for alert investigation

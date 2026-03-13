@@ -1,0 +1,482 @@
+---
+title: Quotations & Quotes
+description: Commercial pipeline management, quotation workflow, and conversion to work orders
+icon: file-invoice-dollar
+---
+
+## Overview
+
+The Quotations module manages the entire commercial pipeline from draft quotes to approved proposals. It supports detailed cost estimation, status tracking, file attachments, and seamless conversion to production work orders.
+
+<CardGroup cols={2}>
+  <Card title="Commercial Pipeline" icon="funnel">
+    Track quotes from draft through sent, approved, or rejected states
+  </Card>
+  <Card title="Cost Estimation" icon="calculator">
+    Itemized materials, hours, and total cost estimation
+  </Card>
+  <Card title="File Attachments" icon="paperclip">
+    Upload PDFs, specs, or technical drawings (max 10MB)
+  </Card>
+  <Card title="OT Conversion" icon="arrow-right">
+    Convert approved quotes to production work orders
+  </Card>
+</CardGroup>
+
+---
+
+## API Endpoints
+
+### List Quotations
+
+```http
+GET /quotations
+```
+
+**Query Parameters:**
+
+<ParamField query="status" type="string" optional>
+  Filter by status: `BORRADOR`, `ENVIADO`, `APROBADO`, `RECHAZADO`
+</ParamField>
+
+<ParamField query="clientId" type="string" optional>
+  Filter by specific client ID
+</ParamField>
+
+<ParamField query="search" type="string" optional>
+  Search by code, title, or description
+</ParamField>
+
+**Response:**
+
+```json
+[
+  {
+    "id": "cuid123",
+    "code": "Q-2026-001",
+    "title": "Fabricación de estructura metálica",
+    "description": "Estructura para galpón industrial",
+    "status": "APROBADO",
+    "clientId": "client123",
+    "client": {
+      "id": "client123",
+      "name": "Industria Aceros SA"
+    },
+    "estimatedTimeMin": 2400,
+    "estimatedCost": 150000.00,
+    "validUntil": "2026-04-30T23:59:59Z",
+    "items": [
+      {
+        "description": "Perfiles IPN 200",
+        "quantity": 50,
+        "unit": "m",
+        "estimatedUnitCost": 1500.00,
+        "estimatedHoursMin": 480
+      }
+    ],
+    "attachmentUrl": "/uploads/drawing-1234.pdf",
+    "createdAt": "2026-03-01T10:00:00Z"
+  }
+]
+```
+
+### Get Quotation by ID
+
+```http
+GET /quotations/:id
+```
+
+### Create Quotation
+
+```http
+POST /quotations
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="clientId" type="string" required>
+  Client ID for this quotation
+</ParamField>
+
+<ParamField body="code" type="string" required>
+  Unique quotation code (e.g., `Q-2026-001`)
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Commercial title of the quotation
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  General description of the work
+</ParamField>
+
+<ParamField body="estimatedTimeMin" type="integer" required>
+  Estimated time in minutes (min: 0)
+</ParamField>
+
+<ParamField body="estimatedCost" type="decimal" required>
+  Total estimated cost (min: 0)
+</ParamField>
+
+<ParamField body="estimatedMaterials" type="string" optional>
+  Text description of estimated materials
+</ParamField>
+
+<ParamField body="status" type="enum" optional>
+  Initial status: `BORRADOR` (default), `ENVIADO`, `APROBADO`, `RECHAZADO`
+</ParamField>
+
+<ParamField body="validUntil" type="datetime" optional>
+  Quote expiration date
+</ParamField>
+
+<ParamField body="items" type="array" required>
+  Array of quotation line items (see QuotationItem schema)
+</ParamField>
+
+**QuotationItem Schema:**
+
+<ParamField body="items[].description" type="string" required>
+  Item description
+</ParamField>
+
+<ParamField body="items[].quantity" type="decimal" required>
+  Quantity (min: 0.001)
+</ParamField>
+
+<ParamField body="items[].unit" type="string" required>
+  Unit of measure (e.g., `u`, `m`, `kg`)
+</ParamField>
+
+<ParamField body="items[].estimatedUnitCost" type="decimal" required>
+  Unit cost (min: 0)
+</ParamField>
+
+<ParamField body="items[].estimatedHoursMin" type="integer" optional>
+  Estimated hours for this item in minutes (min: 0)
+</ParamField>
+
+**Example Request:**
+
+```json
+{
+  "clientId": "client123",
+  "code": "Q-2026-015",
+  "title": "Fabricación de tanque de acero",
+  "description": "Tanque cilíndrico de 5000L con refuerzos",
+  "estimatedTimeMin": 3600,
+  "estimatedCost": 250000.00,
+  "validUntil": "2026-05-30",
+  "status": "BORRADOR",
+  "items": [
+    {
+      "description": "Chapa de acero 6mm",
+      "quantity": 15,
+      "unit": "m2",
+      "estimatedUnitCost": 8000.00,
+      "estimatedHoursMin": 1200
+    },
+    {
+      "description": "Soldadura y ensamble",
+      "quantity": 1,
+      "unit": "u",
+      "estimatedUnitCost": 60000.00,
+      "estimatedHoursMin": 2400
+    }
+  ]
+}
+```
+
+### Update Quotation
+
+```http
+PATCH /quotations/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:** Same fields as Create (all optional)
+
+### Update Quotation Status
+
+```http
+PATCH /quotations/:id/status
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="status" type="enum" required>
+  New status: `BORRADOR`, `ENVIADO`, `APROBADO`, `RECHAZADO`
+</ParamField>
+
+```json
+{
+  "status": "APROBADO"
+}
+```
+
+### Upload Attachment
+
+```http
+POST /quotations/:id/attachment
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Content-Type:** `multipart/form-data`
+
+**Form Fields:**
+
+<ParamField body="file" type="file" required>
+  File to upload (max 10MB)
+</ParamField>
+
+**Example Response:**
+
+```json
+{
+  "attachmentUrl": "/uploads/file-1234567890.pdf"
+}
+```
+
+### Remove Attachment
+
+```http
+DELETE /quotations/:id/attachment
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Delete Quotation
+
+```http
+DELETE /quotations/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+Note: Quotations with associated work orders cannot be deleted.
+
+---
+
+## Quotation Status Flow
+
+<Steps>
+  <Step title="BORRADOR (Draft)">
+    Initial state for new quotations. Editable and not sent to client.
+  </Step>
+  <Step title="ENVIADO (Sent)">
+    Quotation sent to client for review. Still editable if needed.
+  </Step>
+  <Step title="APROBADO (Approved)">
+    Client approved the quote. Ready for conversion to work order.
+  </Step>
+  <Step title="RECHAZADO (Rejected)">
+    Client rejected the quote. No further action required.
+  </Step>
+</Steps>
+
+---
+
+## Frontend Workflow
+
+### Quotation Management Modal
+
+The "Gestionar" (Manage) modal provides comprehensive quote management:
+
+<Tabs>
+  <Tab title="Technical Edit">
+    **Edición Técnica** - Modify materials, hours, and cost estimates
+    
+    - Opens the full quotation editor
+    - Edit items, quantities, unit costs
+    - Adjust total estimated time and cost
+    - Add or remove line items
+  </Tab>
+  
+  <Tab title="Status Management">
+    **Estado Comercial** - Change quotation status
+    
+    - View current status badge
+    - Select new status from dropdown
+    - Click "Fijar Estado" to update
+    - Status changes are audited
+  </Tab>
+  
+  <Tab title="File Attachment">
+    **Archivo Adjunto** - Upload technical documents
+    
+    - Upload PDFs, images, or drawings
+    - Max file size: 10MB
+    - View uploaded document
+    - Delete attachment if needed
+  </Tab>
+  
+  <Tab title="Convert to OT">
+    **Convertir a Orden de Trabajo** - Create production order
+    
+    - Only available when status is `APROBADO`
+    - Enter suggested OT code (auto-generated)
+    - Optional: Set commitment delivery date
+    - Click "Confirmar y Enviar a Producción"
+    - Creates work order with all quotation data
+  </Tab>
+</Tabs>
+
+### Quotation List Features
+
+- **Search**: Filter by code, title, or client name
+- **Status filter**: Dropdown to filter by quotation status
+- **Sorting**: Click column headers to sort by code, client, cost, status, or created date
+- **Expiration warning**: Visual indicator for expired quotes (red "VENCIDO" badge)
+
+---
+
+## Converting to Work Order
+
+When a quotation is approved, you can convert it to a work order:
+
+```http
+POST /work-orders/from-quotation/:quotationId
+```
+
+**Request Body:**
+
+<ParamField body="code" type="string" required>
+  Work order code (e.g., `OT-2026-045`)
+</ParamField>
+
+<ParamField body="commitmentDate" type="datetime" optional>
+  Delivery commitment date
+</ParamField>
+
+**Example:**
+
+```json
+{
+  "code": "OT-2026-045",
+  "commitmentDate": "2026-04-15T23:59:59Z"
+}
+```
+
+The system automatically:
+- Creates a new work order
+- Links it to the quotation
+- Copies client, title, description, estimated time/cost
+- Logs the conversion in audit trail
+
+---
+
+## Data Model
+
+### Quotation Fields
+
+<ParamField path="id" type="string">
+  Unique identifier (CUID)
+</ParamField>
+
+<ParamField path="companyId" type="string">
+  Company/tenant identifier
+</ParamField>
+
+<ParamField path="clientId" type="string">
+  Associated client ID
+</ParamField>
+
+<ParamField path="createdByUserId" type="string | null">
+  User who created the quotation
+</ParamField>
+
+<ParamField path="code" type="string">
+  Unique quotation code (e.g., `Q-2026-001`)
+</ParamField>
+
+<ParamField path="title" type="string">
+  Commercial title
+</ParamField>
+
+<ParamField path="description" type="string">
+  Detailed description
+</ParamField>
+
+<ParamField path="estimatedTimeMin" type="integer">
+  Estimated time in minutes
+</ParamField>
+
+<ParamField path="estimatedCost" type="decimal">
+  Total estimated cost
+</ParamField>
+
+<ParamField path="estimatedMaterials" type="string | null">
+  Text description of materials
+</ParamField>
+
+<ParamField path="attachmentUrl" type="string | null">
+  URL to uploaded file
+</ParamField>
+
+<ParamField path="status" type="enum">
+  `BORRADOR`, `ENVIADO`, `APROBADO`, `RECHAZADO`
+</ParamField>
+
+<ParamField path="approvedAt" type="datetime | null">
+  Approval timestamp
+</ParamField>
+
+<ParamField path="validUntil" type="datetime | null">
+  Quote expiration date
+</ParamField>
+
+<ParamField path="items" type="array">
+  Array of QuotationItem objects
+</ParamField>
+
+<ParamField path="workOrders" type="array">
+  Associated work orders (if converted)
+</ParamField>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Code Generation">
+    Use a consistent naming scheme:
+    - Format: `Q-YYYY-NNN` (e.g., `Q-2026-001`)
+    - Year-based sequences for easy tracking
+    - Auto-increment within the year
+  </Accordion>
+  
+  <Accordion title="Itemization">
+    - Break down complex quotes into detailed items
+    - Include labor and materials separately
+    - Add estimated hours per item for tracking
+    - Use consistent units of measure
+  </Accordion>
+  
+  <Accordion title="Status Management">
+    - Keep quotes in `BORRADOR` until ready to send
+    - Move to `ENVIADO` when submitted to client
+    - Only mark `APROBADO` when client confirms
+    - Set `validUntil` dates to manage pipeline
+  </Accordion>
+  
+  <Accordion title="File Attachments">
+    - Upload technical drawings or specifications
+    - Use descriptive filenames
+    - Keep files under 10MB
+    - Reference attachments in quote communications
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Features
+
+- [Clients](/features/clients) - Customer directory for quotations
+- [Work Orders](/features/work-orders) - Production orders from approved quotes
+- [Audit Log](/features/audit) - Track quotation changes and status updates

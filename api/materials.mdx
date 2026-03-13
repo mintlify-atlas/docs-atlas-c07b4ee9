@@ -1,0 +1,473 @@
+---
+title: 'Materials API'
+description: 'Material inventory management with stock tracking and consumption recording'
+---
+
+## Overview
+
+The Materials API manages inventory of raw materials, supplies, and components. It tracks stock levels, unit costs, and provides stock adjustment capabilities with full audit trail.
+
+## GET /materials
+
+Retrieve all materials with optional search.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Query Parameters
+
+<ParamField query="search" type="string">
+  Search by material name or category.
+</ParamField>
+
+### Response
+
+Returns an array of material objects.
+
+<ResponseField name="id" type="string">
+  Material's unique identifier (CUID).
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Material name.
+</ResponseField>
+
+<ResponseField name="category" type="string">
+  Material category (e.g., "Acero", "Consumibles").
+</ResponseField>
+
+<ResponseField name="unit" type="string">
+  Unit of measure (e.g., "kg", "m", "litros", "unidad").
+</ResponseField>
+
+<ResponseField name="unitCost" type="number">
+  Current cost per unit (Decimal).
+</ResponseField>
+
+<ResponseField name="stock" type="number">
+  Current stock quantity (Decimal with 3 decimal places).
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the material is active.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.example.com/materials?search=acero" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "name": "Perfil IPE 200",
+    "category": "Acero estructural",
+    "unit": "kg",
+    "unitCost": 850.00,
+    "stock": 1245.500,
+    "isActive": true,
+    "createdAt": "2026-01-05T08:00:00.000Z",
+    "updatedAt": "2026-03-10T15:30:00.000Z"
+  },
+  {
+    "id": "clx2b3c4d5e6f7g8h9i0j1k2",
+    "name": "Chapa de acero A36 3mm",
+    "category": "Acero",
+    "unit": "m²",
+    "unitCost": 2100.00,
+    "stock": 85.750,
+    "isActive": true,
+    "createdAt": "2026-01-10T09:00:00.000Z",
+    "updatedAt": "2026-03-12T11:20:00.000Z"
+  },
+  {
+    "id": "clx3c4d5e6f7g8h9i0j1k2l3",
+    "name": "Electrodo de soldadura E6013 3.25mm",
+    "category": "Consumibles",
+    "unit": "kg",
+    "unitCost": 1250.00,
+    "stock": 42.000,
+    "isActive": true,
+    "createdAt": "2026-01-15T10:00:00.000Z",
+    "updatedAt": "2026-03-08T16:45:00.000Z"
+  }
+]
+```
+
+---
+
+## POST /materials
+
+Create a new material.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  Material name. Maximum length: 120 characters.
+</ParamField>
+
+<ParamField body="category" type="string">
+  Material category. Maximum length: 80 characters.
+</ParamField>
+
+<ParamField body="unit" type="string" required>
+  Unit of measure (e.g., "kg", "m", "litros", "unidad"). Maximum length: 30 characters.
+</ParamField>
+
+<ParamField body="unitCost" type="number" required>
+  Cost per unit. Minimum: 0.
+</ParamField>
+
+<ParamField body="stock" type="number" required>
+  Initial stock quantity. Minimum: 0.
+</ParamField>
+
+### Response
+
+Returns the created material object.
+
+### Example Request
+
+```bash
+curl -X POST https://api.example.com/materials \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pintura epoxi gris RAL 7035",
+    "category": "Pinturas",
+    "unit": "litros",
+    "unitCost": 3500.00,
+    "stock": 25.0
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx4d5e6f7g8h9i0j1k2l3m4",
+  "name": "Pintura epoxi gris RAL 7035",
+  "category": "Pinturas",
+  "unit": "litros",
+  "unitCost": 3500.00,
+  "stock": 25.000,
+  "isActive": true,
+  "companyId": "clx0a1b2c3d4e5f6g7h8i9j0",
+  "createdAt": "2026-03-13T21:00:00.000Z",
+  "updatedAt": "2026-03-13T21:00:00.000Z"
+}
+```
+
+### TypeScript Interface
+
+```typescript
+interface CreateMaterialDto {
+  name: string;        // Required, max 120 chars
+  category?: string;   // Optional, max 80 chars
+  unit: string;        // Required, max 30 chars
+  unitCost: number;    // Minimum 0
+  stock: number;       // Minimum 0
+}
+```
+
+---
+
+## PATCH /materials/:id
+
+Update material information (name, category, unit, unit cost).
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Material ID to update.
+</ParamField>
+
+### Request Body
+
+All fields from `CreateMaterialDto` are optional. Partial updates supported.
+
+**Note**: To adjust stock levels, use the dedicated `/materials/:id/adjust-stock` endpoint.
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.example.com/materials/clx4d5e6f7g8h9i0j1k2l3m4 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "unitCost": 3750.00,
+    "category": "Pinturas industriales"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx4d5e6f7g8h9i0j1k2l3m4",
+  "name": "Pintura epoxi gris RAL 7035",
+  "category": "Pinturas industriales",
+  "unit": "litros",
+  "unitCost": 3750.00,
+  "stock": 25.000,
+  "isActive": true,
+  "updatedAt": "2026-03-13T21:30:00.000Z"
+}
+```
+
+---
+
+## POST /materials/:id/adjust-stock
+
+Adjust material stock levels (manual entry or adjustment).
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Material ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="quantity" type="number" required>
+  Quantity to add (positive) or subtract (negative). Can be any number.
+</ParamField>
+
+<ParamField body="unitCost" type="number" required>
+  Unit cost for this transaction. Minimum: 0.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Optional note explaining the adjustment.
+</ParamField>
+
+### Response
+
+Returns the material movement record.
+
+<ResponseField name="id" type="string">
+  Movement record ID.
+</ResponseField>
+
+<ResponseField name="materialId" type="string">
+  Material ID.
+</ResponseField>
+
+<ResponseField name="type" type="MaterialMovementType">
+  Movement type: `ENTRADA` (entry), `AJUSTE` (adjustment), or `CONSUMO` (consumption).
+</ResponseField>
+
+<ResponseField name="quantity" type="number">
+  Quantity added or subtracted.
+</ResponseField>
+
+<ResponseField name="unitCost" type="number">
+  Unit cost for this transaction.
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Note about the movement.
+</ResponseField>
+
+### Example Request - Stock Entry
+
+```bash
+curl -X POST https://api.example.com/materials/clx1a2b3c4d5e6f7g8h9i0j1/adjust-stock \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "quantity": 500.0,
+    "unitCost": 870.00,
+    "note": "Compra a proveedor MetalSur - Factura #1234"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": "clx5e6f7g8h9i0j1k2l3m4n5",
+  "materialId": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "type": "ENTRADA",
+  "quantity": 500.000,
+  "unitCost": 870.00,
+  "note": "Compra a proveedor MetalSur - Factura #1234",
+  "createdAt": "2026-03-13T22:00:00.000Z",
+  "material": {
+    "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "name": "Perfil IPE 200",
+    "stock": 1745.500,
+    "updatedAt": "2026-03-13T22:00:00.000Z"
+  }
+}
+```
+
+### Example Request - Stock Adjustment (Correction)
+
+```bash
+curl -X POST https://api.example.com/materials/clx1a2b3c4d5e6f7g8h9i0j1/adjust-stock \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "quantity": -15.5,
+    "unitCost": 850.00,
+    "note": "Ajuste por inventario físico - Material dañado descartado"
+  }'
+```
+
+### TypeScript Interface
+
+```typescript
+type MaterialMovementType = 
+  | 'ENTRADA'   // Stock entry/purchase
+  | 'AJUSTE'    // Manual adjustment
+  | 'CONSUMO';  // Consumption (work order)
+
+interface AdjustStockDto {
+  quantity: number;     // Can be positive or negative
+  unitCost: number;     // Minimum 0
+  note?: string;
+}
+```
+
+### Movement Type Logic
+
+The system automatically determines the movement type:
+- **Positive quantity** → `ENTRADA` (stock entry)
+- **Negative quantity** → `AJUSTE` (adjustment/correction)
+- **Work order consumption** → `CONSUMO` (automatically created via Work Orders API)
+
+---
+
+## DELETE /materials/:id
+
+Delete a material (soft delete - marks as inactive).
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Material ID to delete.
+</ParamField>
+
+### Response
+
+Returns success confirmation.
+
+### Example Request
+
+```bash
+curl -X DELETE https://api.example.com/materials/clx4d5e6f7g8h9i0j1k2l3m4 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Material deleted successfully"
+}
+```
+
+---
+
+## GET /materials/status
+
+Check the materials service health status.
+
+### Authentication
+**Required**: JWT Bearer token
+
+### Example Request
+
+```bash
+curl -X GET https://api.example.com/materials/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "status": "ok",
+  "service": "materials"
+}
+```
+
+## Material Consumption
+
+Materials are consumed via Work Orders. When materials are used in production, record consumption using the Work Orders API:
+
+```bash
+POST /work-orders/:workOrderId/consumptions
+{
+  "materialId": "clx1a2b3c4d5e6f7g8h9i0j1",
+  "quantity": 125.5,
+  "note": "Consumo para estructura principal"
+}
+```
+
+This automatically:
+1. Creates a `MaterialConsumption` record linked to the work order
+2. Creates a `MaterialMovement` of type `CONSUMO`
+3. Decrements the material stock
+4. Captures the unit cost at time of consumption (cost snapshot)
+
+## Stock Tracking
+
+All stock movements are tracked in the `MaterialMovement` table:
+
+| Movement Type | Trigger | Stock Change |
+|---------------|---------|-------------|
+| `ENTRADA` | Manual stock adjustment (positive) | Increase |
+| `AJUSTE` | Manual stock adjustment (negative) | Decrease |
+| `CONSUMO` | Work order consumption | Decrease |
+
+Each movement records:
+- Quantity changed
+- Unit cost at time of movement
+- Optional note
+- Timestamp
+
+## Error Responses
+
+### 400 Bad Request - Insufficient Stock
+Returned when trying to consume more than available stock.
+
+```json
+{
+  "statusCode": 400,
+  "message": "Insufficient stock. Available: 10.5, Required: 125.5"
+}
+```
+
+### 404 Not Found
+Returned when material ID doesn't exist.
+
+```json
+{
+  "statusCode": 404,
+  "message": "Material not found"
+}
+```

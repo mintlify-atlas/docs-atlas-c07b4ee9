@@ -1,0 +1,174 @@
+---
+title: Supervisor Guide
+description: Guide for supervisors covering dispatch center, work order management, and client coordination
+icon: users-gear
+---
+
+<Info>
+**For:** Supervisors and workshop managers  
+**Access:** Dashboard, Dispatch, Orders, Clients, Budgets, Resources, Materials, Reports, My Shift  
+**Responsibility:** Coordinate daily work, assign orders, and resolve operational issues
+</Info>
+
+## Your Role in the System
+
+As a supervisor, you are the **operational coordinator** of the workshop. Your job is:
+
+✅ Distribute work among operators  
+✅ Track in real-time what's happening on the floor  
+✅ Detect and resolve delays before they reach the client  
+✅ Register workshop resources and materials
+
+## Main Screen: The Dashboard
+
+When you log in, you see the **Management Dashboard** with metrics for the selected period.
+
+### Main KPIs
+
+- **Open orders**: Total active work orders in the system
+- **In process now**: Work orders with operators currently working
+- **Overdue**: Work orders past their delivery date without closing ⚠️
+- **Closed**: Work orders completed in the period (3M / 6M / 12M)
+- **Avg. time/WO**: Average hours per order
+- **Active operators**: How many are working this shift
+
+### Period Filter
+
+Use the **3M / 6M / 12M** buttons to view data for the last quarter, semester, or year.
+
+### Charts
+
+- **Production trend**: Closed work orders + average hours per month
+- **Order status**: Donut chart with distribution by status
+- **Revenue vs Cost**: Estimated revenue vs actual materials cost
+- **Monthly margin**: Profit/loss month by month
+
+### Alerts
+
+If there are work orders with time or cost deviations, they appear in the **Operational Alerts** section with two levels:
+- 🟡 **WARNING**: Close to the limit
+- 🔴 **CRITICAL**: Exceeded threshold, needs immediate intervention
+
+## Dispatch Center (Supervisor)
+
+This is **the most important screen for daily work**.
+
+Find it in the menu → **Dispatch**.
+
+### What does it show?
+
+**Shift KPIs (top row):**
+- Work orders in process / Paused / Overdue / Active operators
+
+**Work orders in execution:**
+- Each card shows the active work order with:
+  - Code + title + client
+  - Status (color: green=in process, orange=paused, red=overdue)
+  - Assigned operators and resources
+  - Delivery date
+
+**Operators on shift:**
+- List of who is working on which work order
+
+**Pending queue:**
+- Next 10 work orders to dispatch, sorted by priority
+
+**Overdue table:**
+- Overdue work orders with days delayed
+
+<Note>
+This screen automatically updates every 30 seconds.
+</Note>
+
+## Work Order Management
+
+From **Orders** in the menu:
+
+<Steps>
+  <Step title="Create a work order">
+    1. Click **New Work Order**
+    2. Fill in: title, client, description, delivery date, priority, estimated hours
+    3. You can link it to an approved budget
+    4. Click **Create**
+  </Step>
+  
+  <Step title="Assign operators and resources">
+    1. Open the work order
+    2. In the **Assigned Resources** section, select the operator or machine
+    3. The operator will see the work order in their "My Shift" screen
+  </Step>
+</Steps>
+
+### Change Work Order Status
+
+Valid statuses and their flow:
+```
+PENDING → PLANNED → IN_PROCESS ⇄ PAUSED → COMPLETED → DELIVERED
+```
+
+You can change the status from the orders list using the status selector or from the detail view.
+
+### Useful Filters
+
+- By **status**: view only IN_PROCESS, PAUSED, etc.
+- By **client**: search for a specific client's work orders
+- By **operator**: view a person's workload
+
+## Budget Management
+
+From **Budgets**:
+
+<Steps>
+  <Step title="Create and convert budgets">
+    1. Create budget indicating client, items, and estimated values
+    2. When client approves, convert it to a Work Order by clicking **Convert to WO**
+    3. The work order is created with the budget data
+  </Step>
+</Steps>
+
+## Workshop Resources
+
+From **Resources** you can view and manage:
+- **Human resources**: operator name in the resources system (different from user)
+- **Machines and tools**: lathes, milling machines, equipment, etc.
+
+Resources are assigned to work orders to record which person or machine does each job.
+
+## Materials
+
+From **Materials** you can:
+- View the materials catalog with unit price
+- Add new materials
+- View consumption history
+
+## Productivity Reports
+
+From **Reports**:
+- Hours worked by operator
+- Completed work orders
+- Deviations between estimated and actual hours
+- Cost analysis
+
+## Daily Operation Tips
+
+<Steps>
+  <Step title="First thing in the morning">
+    Check the Dispatch Center to see the workshop status
+  </Step>
+  
+  <Step title="During the shift">
+    Verify Dashboard alerts
+  </Step>
+  
+  <Step title="At closing">
+    Review the pending queue for the next day
+  </Step>
+  
+  <Step title="Weekly">
+    Look at Productivity Reports
+  </Step>
+</Steps>
+
+<Note>
+Keep communication open with operators. The system tracks the "what" and "when," but you provide the "why" and "how."
+</Note>

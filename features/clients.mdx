@@ -1,0 +1,317 @@
+---
+title: Client Management
+description: Manage customer accounts, contacts, and commercial information
+icon: users
+---
+
+## Overview
+
+The Client Management module provides a complete CRM solution for managing customer accounts, contact details, and billing information. It serves as the foundation for quotations and work orders.
+
+<CardGroup cols={2}>
+  <Card title="Directory" icon="folder-open">
+    Centralized repository of all customer accounts with search and filtering
+  </Card>
+  <Card title="Contact Info" icon="address-book">
+    Store complete contact details including phone, email, and addresses
+  </Card>
+  <Card title="Notes & History" icon="file-text">
+    Track internal observations and payment conditions
+  </Card>
+  <Card title="Integration" icon="link">
+    Linked to quotations and work orders for seamless workflow
+  </Card>
+</CardGroup>
+
+---
+
+## API Endpoints
+
+### List Clients
+
+```http
+GET /clients
+```
+
+Retrieve all clients for the authenticated company with optional search filtering.
+
+**Query Parameters:**
+
+<ParamField query="search" type="string" optional>
+  Search term to filter by name, contact, or email
+</ParamField>
+
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "cuid123",
+      "name": "Industria Aceros SA",
+      "contact": "Perez, Juan",
+      "phone": "+54 11 0000 0000",
+      "email": "pagos@empresa.com",
+      "address": "Calle 123, Parque Industrial",
+      "notes": "Pago a 30 días"
+    }
+  ]
+}
+```
+
+### Get Client by ID
+
+```http
+GET /clients/:id
+```
+
+Retrieve a specific client by ID.
+
+### Create Client
+
+```http
+POST /clients
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="name" type="string" required>
+  Client name or legal business name (max 120 chars)
+</ParamField>
+
+<ParamField body="contact" type="string" optional>
+  Primary contact person name (max 120 chars)
+</ParamField>
+
+<ParamField body="phone" type="string" optional>
+  Contact phone number (max 50 chars)
+</ParamField>
+
+<ParamField body="email" type="string" optional>
+  Billing or contact email address (max 120 chars)
+</ParamField>
+
+<ParamField body="address" type="string" optional>
+  Fiscal or delivery address (max 250 chars)
+</ParamField>
+
+<ParamField body="notes" type="string" optional>
+  Internal observations, payment terms, etc. (max 500 chars)
+</ParamField>
+
+**Example Request:**
+
+```json
+{
+  "name": "Industria Aceros SA",
+  "contact": "Perez, Juan",
+  "phone": "+54 11 0000 0000",
+  "email": "pagos@empresa.com",
+  "address": "Calle 123, Parque Industrial, Provincia",
+  "notes": "Condiciones especiales: pago a 30 días"
+}
+```
+
+### Update Client
+
+```http
+PATCH /clients/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:** Same fields as Create Client (all optional)
+
+### Delete Client
+
+```http
+DELETE /clients/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+Permanently removes a client. Note: Clients with associated quotations or work orders cannot be deleted due to referential integrity.
+
+---
+
+## Data Model
+
+### Client Fields
+
+<ParamField path="id" type="string">
+  Unique identifier (CUID)
+</ParamField>
+
+<ParamField path="companyId" type="string">
+  Company/tenant identifier for multi-tenancy
+</ParamField>
+
+<ParamField path="name" type="string">
+  Client name or legal business name
+</ParamField>
+
+<ParamField path="contact" type="string | null">
+  Primary contact person
+</ParamField>
+
+<ParamField path="phone" type="string | null">
+  Contact phone number
+</ParamField>
+
+<ParamField path="email" type="string | null">
+  Contact email address
+</ParamField>
+
+<ParamField path="address" type="string | null">
+  Fiscal or delivery address
+</ParamField>
+
+<ParamField path="notes" type="string | null">
+  Internal observations and notes
+</ParamField>
+
+<ParamField path="isActive" type="boolean">
+  Active status (default: true)
+</ParamField>
+
+<ParamField path="createdAt" type="datetime">
+  Creation timestamp
+</ParamField>
+
+<ParamField path="updatedAt" type="datetime">
+  Last update timestamp
+</ParamField>
+
+---
+
+## Frontend Implementation
+
+### Client List View
+
+The `ClientsPage.tsx` component provides:
+
+- **Real-time search** filtering by name, contact, or email
+- **Data table** with columns: Name, Contact, Phone, Email, Actions
+- **Quick actions** for editing and deleting clients
+- **Record counter** showing total clients
+
+### CRUD Modal
+
+The modal dialog supports both create and edit operations:
+
+<Tabs>
+  <Tab title="Create Flow">
+    1. Click "+ Nuevo Cliente" button
+    2. Fill required field: **name**
+    3. Optionally add contact, phone, email, address, notes
+    4. Click "Guardar Ficha"
+    5. Client appears in table immediately
+  </Tab>
+  <Tab title="Edit Flow">
+    1. Click "Editar" button on client row
+    2. Modal pre-fills with existing data
+    3. Modify any fields
+    4. Click "Guardar Ficha"
+    5. Changes reflected in table
+  </Tab>
+  <Tab title="Delete Flow">
+    1. Click "Baja" button on client row
+    2. Confirmation dialog appears
+    3. Click "Sí, Eliminar" to confirm
+    4. Client removed from system (if no dependencies)
+  </Tab>
+</Tabs>
+
+### Form Sections
+
+The client form is organized into logical sections:
+
+**Datos Principales (Main Data)**
+- Name / Legal Business Name
+- Primary Contact Person
+
+**Contacto y Dirección (Contact & Address)**
+- Phone
+- Billing Email
+- Fiscal/Delivery Address
+
+**Observaciones Internas (Internal Notes)**
+- Payment conditions, references, etc.
+
+---
+
+## Usage Examples
+
+### Creating a Client
+
+```typescript
+import { api } from '@/shared/api/http';
+
+const createClient = async () => {
+  const response = await api.post('/clients', {
+    name: 'Metalúrgica del Sur',
+    contact: 'García, María',
+    phone: '+54 11 4567-8900',
+    email: 'facturacion@metalurgica.com',
+    address: 'Av. Industrial 456, Buenos Aires',
+    notes: 'Cliente preferencial - descuento 10%'
+  });
+  return response.data;
+};
+```
+
+### Searching Clients
+
+```typescript
+const searchClients = async (term: string) => {
+  const response = await api.get('/clients', {
+    params: { search: term }
+  });
+  return response.data.items;
+};
+```
+
+### Updating Client Info
+
+```typescript
+const updateClient = async (id: string, updates: Partial<Client>) => {
+  const response = await api.patch(`/clients/${id}`, updates);
+  return response.data;
+};
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Data Quality">
+    - Always fill the **name** field with complete legal business name
+    - Validate email format on the frontend
+    - Use consistent phone number formatting
+    - Keep addresses complete for delivery purposes
+  </Accordion>
+  
+  <Accordion title="Notes Management">
+    - Document payment terms (e.g., "30 días", "contado")
+    - Record special delivery instructions
+    - Track account manager or sales representative
+    - Note preferred communication channels
+  </Accordion>
+  
+  <Accordion title="Search Optimization">
+    - Search works across name, contact, and email fields
+    - Use partial matches for flexible searching
+    - Keep client names unique and descriptive
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Features
+
+- [Quotations](/features/quotations) - Create quotes for clients
+- [Work Orders](/features/work-orders) - Generate work orders linked to clients
+- [Audit Log](/features/audit) - Track all client changes

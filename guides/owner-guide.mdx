@@ -1,0 +1,226 @@
+---
+title: Owner / Administrator Guide
+description: Complete guide for shop owners covering user management, audit logs, and full system access
+icon: crown
+---
+
+<Info>
+**For:** Shop owners, managers, and administrators  
+**Access Level:** COMPLETE — all system features  
+**Responsibility:** Make strategic decisions based on real workshop data
+</Info>
+
+## What the System Provides
+
+The system transforms your workshop into actionable insights:
+
+| Before | Now |
+|--------|-----|
+| "I don't know how many hours that piece took" | Exact hours recorded by operators |
+| "I don't know if we're making money" | Estimated monthly margin on the Dashboard |
+| "I don't know who's working on what" | Real-time dispatch center |
+| "Control is in the supervisor's head" | Everything recorded, auditable, and queryable |
+
+## Executive Dashboard
+
+The **Dashboard** is the first screen you see when logging in. It provides a 360° view of your workshop.
+
+### Period Selector
+
+The **3M / 6M / 12M** buttons filter all data for the selected period. Use this to compare quarters or view yearly trends.
+
+### Production KPIs (Top Row)
+
+| KPI | What it tells you |
+|-----|------------------|
+| Open orders | Total pending work |
+| In process | Operators working now |
+| Overdue | ⚠️ Work orders past their due date — requires attention |
+| Closed | Orders completed in the period |
+| Avg. time/WO | Efficiency per order |
+| Active operators | Team utilization |
+
+### Estimated Financial Summary
+
+<Warning>
+Values are **estimates** based on budgets and recorded consumption.
+</Warning>
+
+| Metric | How it's calculated |
+|--------|--------------------|
+| Estimated revenue | Sum of budget values from closed work orders |
+| Estimated profit | WOs where actual cost < budgeted price |
+| Estimated loss | WOs where actual cost > budgeted price |
+| Actual materials cost | Sum of all recorded consumption |
+| Net margin | Profit - Loss |
+
+### Interactive Charts
+
+- **Monthly trend**: Is the workshop closing more or fewer work orders? Are hours per order increasing?
+- **Current status** (donut): Where are orders accumulated?
+- **Revenue vs Materials Cost**: Difference between what you invoice and what you spend on supplies
+- **Monthly margin**: Good months (green) vs months with losses (red)
+
+### Operational Alerts
+
+Automatic alert system for deviations:
+- 🟡 **Warning**: Work order exceeded 80% of estimated time without closing
+- 🔴 **Critical**: Work order significantly exceeded estimated time or cost
+
+## User Management
+
+From the menu → **Users** (only visible to Owner/Admin).
+
+<Steps>
+  <Step title="Create a new user">
+    1. Click **New User**
+    2. Fill in: full name, email, role, initial password
+    3. Click **Create User**
+    4. The operator can log in immediately
+  </Step>
+</Steps>
+
+### Available Roles
+
+| Role | Description |
+|------|-------------|
+| **Operator** | Only sees assigned work orders. No access to Dashboard or management |
+| **Supervisor** | Access to everything except Users and Audit. Can manage work orders and dispatch work |
+| **Owner** | Complete access. Only role that can create/suspend users and view audit history |
+| **Admin** | Same as Owner. For technical system personnel |
+
+### Change User Role
+
+From the users table, use the role selector in the actions column. Changes are immediate.
+
+### Suspend a User
+
+If an operator leaves the workshop or is on leave:
+
+<Steps>
+  <Step title="Suspend access">
+    1. Click **Suspend** in the user's row
+    2. Confirm in the dialog
+    3. User cannot access the system until you reactivate them
+  </Step>
+</Steps>
+
+## Audit History
+
+From the menu → **Audit** (only visible to Owner/Admin).
+
+Shows **every action** performed in the system with:
+- Exact date and time
+- User who performed it and their role
+- Which entity was modified (WO, client, user, etc.)
+- Action type (creation, modification, status change, login, etc.)
+- The value **before** and **after** the change (expandable)
+
+### Available Filters
+
+- **Entity**: View only changes to Work Orders, Clients, Users, etc.
+- **Action**: View only creations, or only status changes, etc.
+
+### What is it for?
+
+- Know who changed a work order status and when
+- Verify if an operator recorded their work start time
+- Audit price changes in budgets
+- Verify system access (logins)
+
+## Budget and Work Order Control
+
+### Complete Workflow
+
+```
+Client inquiry → Create Budget → Client approves → Convert to WO → 
+Assign operator → Work → Complete → Deliver → Collect payment
+```
+
+### Budget Management
+
+From **Budgets**:
+- Create budget with client, items, and values
+- View budget history by client
+- Convert to Work Order when client approves
+
+### Monitor Work Orders
+
+From **Orders**:
+- View all work orders with filters by status and client
+- Review event history for each work order (who did what and when)
+- View recorded material consumption
+
+## Productivity Reports
+
+From **Reports** you get:
+
+- **Hours worked**: By operator for the period
+- **Completed WOs**: By operator
+- **Hour deviation**: Actual vs estimated by work order
+- **Most productive operator**: Efficiency ranking
+
+## Basic System Management
+
+### Clients
+
+Manage the complete portfolio from **Clients**: name, tax ID, email, phone.
+
+### Resources
+
+Register in **Resources**:
+- People (linked as resources, different from system users)
+- Machines and workshop tools
+
+### Materials
+
+Create the **Materials** catalog with name and unit price.  
+Operators select from this catalog when recording consumption.
+
+## Management Recommendations
+
+### Week by Week
+
+<Steps>
+  <Step title="Review metrics">
+    Check the **Dashboard** with 3M filter to see trends
+  </Step>
+  <Step title="Check alerts">
+    Verify **alerts**: overdue work orders need attention
+  </Step>
+  <Step title="Balance workload">
+    Review **load per operator**: if someone is overloaded, redistribute
+  </Step>
+</Steps>
+
+### Month by Month
+
+1. Analyze **monthly margin**: Did it improve from the previous month?
+2. Review work orders with estimated loss: What went wrong?
+3. Adjust material **prices** if costs increased
+
+### Before a Business Meeting
+
+1. Filter the Dashboard by the meeting period
+2. Export or screenshot revenue and margin charts
+3. Use productivity data to negotiate with the team
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Are the financial values exact?">
+    They are estimates based on budgets and recorded consumption. The more complete the records, the more accurate the data.
+  </Accordion>
+  
+  <Accordion title="Can I delete a work order?">
+    Work orders are not deleted, only cancelled. This preserves traceability.
+  </Accordion>
+  
+  <Accordion title="What if an operator breaks their phone and can't record?">
+    You can register events yourself from the work order view.
+  </Accordion>
+  
+  <Accordion title="Can I have more than one company in the system?">
+    Yes, the system supports multiple isolated companies. Each company needs its own deployment or a multi-tenant configuration (consult the developer).
+  </Accordion>
+</AccordionGroup>

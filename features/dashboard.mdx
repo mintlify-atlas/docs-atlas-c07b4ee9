@@ -1,0 +1,199 @@
+---
+title: 'Executive Dashboard'
+description: 'Real-time operational control panel for production monitoring and management'
+icon: 'chart-line'
+---
+
+## Overview
+
+The **Executive Dashboard** provides plant managers and executives with a comprehensive real-time view of production operations, financial performance, and operational alerts. Built with Recharts visualization library, it delivers actionable insights through interactive charts and KPIs.
+
+<Info>
+  The dashboard automatically updates every time you navigate to it, providing fresh data on production status, financial estimates, and operator workload.
+</Info>
+
+## Key Features
+
+### Real-Time Production Snapshot
+
+The dashboard displays critical production metrics at a glance:
+
+- **Open Orders**: Total work orders currently in the system
+- **In Process**: Orders actively being worked on right now  
+- **Delayed Orders**: Orders past their commitment date requiring attention
+- **Closed Orders**: Completed orders for the selected period (3M, 6M, or 12M)
+- **Average Time per Order**: Mean hours spent per work order
+- **Active Operators**: Number of operators currently working
+
+### Financial Summary (Estimated)
+
+View key financial metrics calculated from work order data:
+
+- **Estimated Revenue**: Total invoicing expected from closed orders
+- **Estimated Profit**: Revenue from orders with positive margins
+- **Estimated Loss**: Revenue from orders with cost overruns
+- **Real Material Costs**: Actual registered material consumption
+- **Net Margin**: Overall profitability estimate (revenue - costs)
+
+<Note>
+  All financial figures are **estimates** based on quotations and real consumption. They provide operational guidance but should be reconciled with accounting systems for official reporting.
+</Note>
+
+### Period Filtering
+
+Switch between 3-month, 6-month, and 12-month views using the period selector in the header. All charts and aggregates update dynamically to reflect the selected timeframe.
+
+```tsx
+// Period options available
+3M  // Last 3 months
+6M  // Last 6 months  
+12M // Last 12 months (default)
+```
+
+## Interactive Charts
+
+### 1. Production Trend (Line Chart)
+
+Tracks two key metrics over time:
+- **Orders Closed**: Number of work orders completed each month
+- **Avg Hours/Order**: Average hours spent per order each month
+
+This chart helps identify:
+- Production velocity trends
+- Efficiency improvements or degradation
+- Seasonal patterns in order completion
+
+### 2. Order Status Distribution (Donut Chart)
+
+Visualizes the current breakdown of all work orders by status:
+- Pendiente (Pending)
+- Planificada (Planned)
+- En proceso (In Process)
+- Pausada (Paused)
+- Finalizada (Finished)
+- Entregada (Delivered)
+- Cancelada (Cancelled)
+- Retrabajo (Rework)
+
+Each segment shows the percentage distribution, making it easy to spot bottlenecks.
+
+### 3. Revenue vs Material Cost (Bar Chart)
+
+Compares estimated income against material costs month by month:
+- **Blue bars**: Estimated revenue from quotations
+- **Orange bars**: Real material costs consumed
+
+Gap between bars indicates gross margin before labor and overhead.
+
+### 4. Monthly Margin (Stacked Bar Chart)
+
+Shows profitability breakdown:
+- **Green bars**: Estimated profit from orders with positive margins
+- **Red bars**: Estimated loss from orders exceeding budget
+
+Helps identify which months had the most cost overruns.
+
+## Operational Alerts
+
+The dashboard displays two severity levels of alerts:
+
+<Warning>
+  **Critical Alerts (🔴)**: Orders with severe cost or time deviations requiring immediate attention
+</Warning>
+
+**Warning Alerts (🟡)**: Orders approaching thresholds for intervention
+
+Each alert card shows:
+- Order code and client name
+- Specific deviation reasons (e.g., "Material cost exceeds estimate by 45%")
+- Severity badge for quick scanning
+
+## Operator Load
+
+A horizontal bar chart showing current workload distribution:
+- Lists each operator with assigned orders
+- Bar length represents relative workload compared to busiest operator
+- Shows actual number of orders assigned to each person
+
+<Info>
+  Use this view to balance workload and identify operators available for new assignments.
+</Info>
+
+## Recent Orders Table
+
+The bottom section displays the most recently created work orders with:
+- **Code**: Unique work order identifier (e.g., "OT-2024-0127")
+- **Title**: Brief description of the work
+- **Client**: Customer name
+- **Status**: Current state with color-coded badge
+
+## User Interface Elements
+
+### Hero Header
+
+```
+🏭 Panel Ejecutivo · Gerencia de Planta
+Tablero de Control Operativo
+[Current date in Spanish format]
+
+[Sistema online] [Critical alerts] [Warning alerts] [3M|6M|12M]
+```
+
+### KPI Cards
+
+Each metric is displayed in a color-coded card:
+- **Blue**: Open orders
+- **Cyan**: In process
+- **Red**: Delayed orders  
+- **Lime**: Closed orders
+- **Orange**: Average time
+- **Purple**: Active operators
+
+### Custom Tooltips
+
+Hovering over any chart data point reveals a styled tooltip showing:
+- Month/category label
+- Exact numeric values
+- Currency formatting for financial data
+
+## Empty States
+
+When no data is available:
+- **No alerts**: Shows ✅ "All orders within normal thresholds"
+- **No operator load**: "No operators with assigned load"
+- **Loading**: Displays animated spinner with "Loading management dashboard..."
+- **Error**: Shows warning icon with connection error message
+
+## Technical Implementation
+
+The dashboard is built with:
+- **React Query**: Automatic data fetching and caching
+- **Recharts**: All chart visualizations
+- **Responsive Design**: Charts adapt to container width
+- **API Endpoint**: `GET /reports/dashboard?months={period}`
+
+### Data Update Frequency
+
+Data refreshes on:
+- Initial page load
+- Period filter change
+- Manual browser refresh
+- After navigating away and returning
+
+<Note>
+  Unlike the Supervisor Page, the dashboard does not auto-refresh on an interval. To see the latest data, refresh the browser or navigate away and back.
+</Note>
+
+## Best Practices
+
+1. **Start with 12M view** to understand long-term trends, then drill into shorter periods
+2. **Check alerts daily** to catch cost overruns before they escalate
+3. **Monitor operator load** before assigning new work orders
+4. **Review delayed orders** section to prioritize interventions
+5. **Compare revenue vs cost trends** to validate pricing strategies
+
+## Related Features
+
+- [Dispatch Center](/features/dispatch-center) - Real-time order management
+- [Reports](/features/reports) - Detailed analytical reports
+- [Work Orders](/features/work-orders) - Order management

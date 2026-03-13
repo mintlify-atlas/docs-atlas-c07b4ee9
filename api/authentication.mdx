@@ -1,0 +1,440 @@
+---
+title: 'Authentication'
+description: 'JWT-based authentication flow and session management'
+---
+
+## Overview
+
+DRAIT Mini-MES uses JWT (JSON Web Token) authentication to secure API endpoints. All protected endpoints require a valid JWT token in the Authorization header.
+
+## Authentication Flow
+
+<Steps>
+  <Step title="Login with credentials">
+    Send a POST request to `/api/auth/login` with email and password.
+    
+    ```bash
+    curl -X POST http://localhost/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "user@example.com",
+        "password": "your_password"
+      }'
+    ```
+  </Step>
+
+  <Step title="Receive access token">
+    On successful authentication, receive a JWT access token and user information.
+    
+    ```json
+    {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "cm8x5y2z3000008l4a1b2c3d4",
+        "companyId": "cm8x5y2z3000008l4a1b2c3d5",
+        "fullName": "John Doe",
+        "email": "user@example.com",
+        "role": "ADMIN",
+        "companyName": "Acme Manufacturing"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Include token in requests">
+    Add the token to the Authorization header for all protected endpoints.
+    
+    ```bash
+    curl http://localhost/api/users \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    ```
+  </Step>
+
+  <Step title="Token validation">
+    The server validates the token on each request and extracts user information.
+    
+    - Token signature is verified using `JWT_SECRET`
+    - Expiration time is checked
+    - User data is attached to the request object
+  </Step>
+</Steps>
+
+## Login Endpoint
+
+### POST /api/auth/login
+
+Authenticate a user and receive an access token.
+
+**Rate Limit:** 5 requests per 60 seconds per IP address
+
+**Request Body:**
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `email` | string | Yes | Must be valid email format |
+| `password` | string | Yes | Minimum 6 characters |
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@company.com",
+    "password": "securePassword123"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost/api/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email: 'admin@company.com',
+    password: 'securePassword123'
+  })
+});
+
+const { accessToken, user } = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost/api/auth/login',
+    json={
+        'email': 'admin@company.com',
+        'password': 'securePassword123'
+    }
+)
+
+data = response.json()
+access_token = data['accessToken']
+```
+</CodeGroup>
+
+**Success Response (200):**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbTh4NXkyejMwMDAwMDhsNGExYjJjM2Q0IiwiY29tcGFueUlkIjoiY204eDV5MnozMDAwMDA4bDRhMWIyYzNkNSIsInJvbGUiOiJBRE1JTiIsImVtYWlsIjoiYWRtaW5AY29tcGFueS5jb20iLCJmdWxsTmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNzEwMzI0MDAwLCJleHAiOjE3MTAzNTI4MDB9.signature",
+  "user": {
+    "id": "cm8x5y2z3000008l4a1b2c3d4",
+    "companyId": "cm8x5y2z3000008l4a1b2c3d5",
+    "fullName": "John Doe",
+    "email": "admin@company.com",
+    "role": "ADMIN",
+    "companyName": "Acme Manufacturing"
+  }
+}
+```
+
+**Error Responses:**
+
+<Accordion title="401 Unauthorized - Invalid Credentials">
+```json
+{
+  "statusCode": 401,
+  "message": "Credenciales invalidas"
+}
+```
+
+Returned when:
+- Email doesn't exist
+- Password is incorrect
+- User is not active (`isActive: false`)
+- Company is not active
+</Accordion>
+
+<Accordion title="400 Bad Request - Validation Error">
+```json
+{
+  "statusCode": 400,
+  "message": [
+    "email must be an email",
+    "password must be longer than or equal to 6 characters"
+  ],
+  "error": "Bad Request"
+}
+```
+</Accordion>
+
+<Accordion title="429 Too Many Requests - Rate Limit">
+```json
+{
+  "statusCode": 429,
+  "message": "ThrottlerException: Too Many Requests"
+}
+```
+
+Maximum 5 login attempts per 60 seconds per IP address.
+</Accordion>
+
+## Token Structure
+
+The JWT token contains the following payload:
+
+```json
+{
+  "sub": "cm8x5y2z3000008l4a1b2c3d4",      // User ID
+  "companyId": "cm8x5y2z3000008l4a1b2c3d5", // Company ID
+  "role": "ADMIN",                          // User role
+  "email": "admin@company.com",             // User email
+  "fullName": "John Doe",                   // User full name
+  "iat": 1710324000,                        // Issued at (timestamp)
+  "exp": 1710352800                         // Expiration (timestamp)
+}
+```
+
+## Session Management
+
+### Token Expiration
+
+- **Default expiration**: 8 hours (configurable via `JWT_EXPIRES_IN` environment variable)
+- Tokens are stateless - no server-side session storage
+- Clients must handle token refresh by re-authenticating
+
+### GET /api/auth/me
+
+Retrieve current user information from a valid token.
+
+**Authentication Required:** Yes
+
+<CodeGroup>
+```bash Request
+curl http://localhost/api/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```json Response (200)
+{
+  "id": "cm8x5y2z3000008l4a1b2c3d4",
+  "companyId": "cm8x5y2z3000008l4a1b2c3d5",
+  "fullName": "John Doe",
+  "email": "admin@company.com",
+  "role": "ADMIN",
+  "companyName": "Acme Manufacturing"
+}
+```
+</CodeGroup>
+
+**Error Response (404):**
+
+```json
+{
+  "statusCode": 404,
+  "message": "Usuario no encontrado"
+}
+```
+
+### POST /api/auth/logout
+
+Client-side logout endpoint (tokens remain valid until expiration).
+
+**Authentication Required:** Yes
+
+<CodeGroup>
+```bash Request
+curl -X POST http://localhost/api/auth/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```json Response (200)
+{
+  "success": true
+}
+```
+</CodeGroup>
+
+<Note>
+Since tokens are stateless, calling logout doesn't invalidate the token on the server. Clients should discard the token locally.
+</Note>
+
+## Using Tokens in Requests
+
+### Authorization Header
+
+All protected endpoints require the JWT token in the Authorization header:
+
+```http
+Authorization: Bearer <your_jwt_token>
+```
+
+### Example Authenticated Request
+
+```bash
+curl http://localhost/api/work-orders \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json"
+```
+
+### Token Validation Errors
+
+<Accordion title="401 Unauthorized - Missing Token">
+```json
+{
+  "statusCode": 401,
+  "message": "Token ausente o invalido"
+}
+```
+
+Returned when:
+- No Authorization header is present
+- Authorization header doesn't start with "Bearer "
+</Accordion>
+
+<Accordion title="401 Unauthorized - Invalid/Expired Token">
+```json
+{
+  "statusCode": 401,
+  "message": "Sesion expirada o token invalido"
+}
+```
+
+Returned when:
+- Token signature is invalid
+- Token has expired
+- Token is malformed
+</Accordion>
+
+## Role-Based Access Control
+
+### Available Roles
+
+| Role | Value | Access Level |
+|------|-------|--------------|
+| Owner | `DUENO` | Full system access |
+| Administrator | `ADMIN` | Full system access |
+| Supervisor | `SUPERVISOR` | Read/write access to operations |
+| Operator | `OPERARIO` | Limited access to assigned work orders |
+
+### Protected Endpoints
+
+Endpoints are protected using the `@Roles()` decorator:
+
+```typescript
+@Roles('DUENO', 'SUPERVISOR', 'ADMIN')
+```
+
+### Example: Role-Based Access
+
+<CodeGroup>
+```bash Owner/Admin/Supervisor - Allowed
+# Create a new client (requires DUENO, SUPERVISOR, or ADMIN role)
+curl -X POST http://localhost/api/clients \
+  -H "Authorization: Bearer <owner_or_admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Client",
+    "email": "client@example.com"
+  }'
+```
+
+```bash Operator - Forbidden
+# Same request with OPERARIO role returns 403
+curl -X POST http://localhost/api/clients \
+  -H "Authorization: Bearer <operator_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Client",
+    "email": "client@example.com"
+  }'
+
+# Response:
+# {
+#   "statusCode": 403,
+#   "message": "Forbidden resource"
+# }
+```
+</CodeGroup>
+
+### Common Role Restrictions
+
+| Endpoint Pattern | Required Roles |
+|------------------|----------------|
+| `POST /api/users` | `DUENO`, `ADMIN` |
+| `POST /api/clients` | `DUENO`, `SUPERVISOR`, `ADMIN` |
+| `POST /api/work-orders` | `DUENO`, `SUPERVISOR`, `ADMIN` |
+| `PATCH /api/work-orders/:id/status` | `DUENO`, `SUPERVISOR`, `ADMIN`, `OPERARIO` |
+| `POST /api/materials` | `DUENO`, `SUPERVISOR`, `ADMIN` |
+| `GET /api/*` | All authenticated roles |
+
+## Security Best Practices
+
+### JWT Secret Configuration
+
+<Warning>
+In production, always use a strong JWT secret. The application will refuse to start if using weak default values.
+</Warning>
+
+Configure via environment variable:
+
+```bash
+JWT_SECRET=your-secure-random-secret-key-min-32-chars
+JWT_EXPIRES_IN=8h
+```
+
+**Weak secrets that will be rejected in production:**
+- `change_this_secret`
+- `secret`
+- `changeme`
+- `jwt_secret`
+
+### Password Requirements
+
+- Minimum 6 characters (enforced by validation)
+- Passwords are hashed using bcrypt before storage
+- Plain text passwords are never stored
+
+### Audit Logging
+
+All login attempts are logged to the audit system:
+
+```json
+{
+  "companyId": "cm8x5y2z3000008l4a1b2c3d5",
+  "userId": "cm8x5y2z3000008l4a1b2c3d4",
+  "entityType": "AUTH",
+  "entityId": "cm8x5y2z3000008l4a1b2c3d4",
+  "action": "LOGIN",
+  "metadata": {
+    "email": "admin@company.com"
+  }
+}
+```
+
+### Company Isolation
+
+- Users can only authenticate if both user and company are active
+- All subsequent requests are automatically filtered by `companyId` from the JWT
+- No cross-company data access is possible
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Token expired too quickly">
+    Adjust the `JWT_EXPIRES_IN` environment variable:
+    
+    ```bash
+    JWT_EXPIRES_IN=12h  # Extend to 12 hours
+    ```
+  </Accordion>
+
+  <Accordion title="CORS errors when authenticating">
+    Ensure `CORS_ORIGIN` environment variable matches your frontend URL:
+    
+    ```bash
+    CORS_ORIGIN=http://localhost:5173
+    ```
+  </Accordion>
+
+  <Accordion title="403 Forbidden despite valid token">
+    Check that your user role has permission for the endpoint. Review role requirements in the [Role-Based Access Control](#role-based-access-control) section.
+  </Accordion>
+
+  <Accordion title="Rate limit errors on login">
+    The login endpoint is limited to 5 attempts per minute per IP. Wait 60 seconds or contact your administrator.
+  </Accordion>
+</AccordionGroup>

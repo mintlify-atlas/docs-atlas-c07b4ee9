@@ -1,0 +1,526 @@
+---
+title: Materials & Inventory
+description: Material management, stock tracking, movements, and consumption recording
+icon: boxes-stacked
+---
+
+## Overview
+
+The Materials module provides comprehensive inventory management for production inputs. Track stock levels, unit costs, movements (entries/adjustments), and consumption tied to work orders with cost snapshots for accurate financial tracking.
+
+<CardGroup cols={2}>
+  <Card title="Inventory Tracking" icon="warehouse">
+    Real-time stock levels with decimal precision
+  </Card>
+  <Card title="Cost Management" icon="dollar-sign">
+    Track unit costs with historical snapshots on consumption
+  </Card>
+  <Card title="Movement History" icon="clock-rotate-left">
+    Complete audit trail of entries, adjustments, and consumption
+  </Card>
+  <Card title="OT Integration" icon="link">
+    Link material consumption to work orders for cost analysis
+  </Card>
+</CardGroup>
+
+---
+
+## Movement Types
+
+<Steps>
+  <Step title="ENTRADA (Entry)">
+    Stock entry from purchase or production
+  </Step>
+  <Step title="AJUSTE (Adjustment)">
+    Manual stock correction or inventory adjustment
+  </Step>
+  <Step title="CONSUMO (Consumption)">
+    Material used in work order production
+  </Step>
+</Steps>
+
+---
+
+## API Endpoints
+
+### List Materials
+
+```http
+GET /materials
+```
+
+**Query Parameters:**
+
+<ParamField query="search" type="string" optional>
+  Search by material name
+</ParamField>
+
+**Response:**
+
+```json
+[
+  {
+    "id": "mat123",
+    "name": "Chapa de acero 6mm",
+    "category": "Metales",
+    "unit": "m2",
+    "unitCost": 8000.00,
+    "stock": 125.500,
+    "isActive": true,
+    "createdAt": "2025-01-10T10:00:00Z",
+    "updatedAt": "2026-03-15T14:30:00Z"
+  },
+  {
+    "id": "mat456",
+    "name": "Electrodo E6013",
+    "category": "Soldadura",
+    "unit": "kg",
+    "unitCost": 2500.00,
+    "stock": 45.250,
+    "isActive": true,
+    "createdAt": "2025-01-12T09:00:00Z"
+  }
+]
+```
+
+### Get Material by ID
+
+```http
+GET /materials/:id
+```
+
+Returns full material details including movement history and consumption records.
+
+### Create Material
+
+```http
+POST /materials
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="name" type="string" required>
+  Material name (max 120 chars)
+</ParamField>
+
+<ParamField body="category" type="string" optional>
+  Material category or family (max 80 chars)
+</ParamField>
+
+<ParamField body="unit" type="string" required>
+  Unit of measure (max 30 chars) - e.g., `kg`, `m`, `m2`, `l`, `u`
+</ParamField>
+
+<ParamField body="unitCost" type="decimal" required>
+  Cost per unit (min: 0)
+</ParamField>
+
+<ParamField body="stock" type="decimal" required>
+  Initial stock quantity (min: 0)
+</ParamField>
+
+**Example:**
+
+```json
+{
+  "name": "Perfil IPN 200",
+  "category": "Perfiles Estructurales",
+  "unit": "m",
+  "unitCost": 15000.00,
+  "stock": 50.000
+}
+```
+
+### Update Material
+
+```http
+PATCH /materials/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:** Same fields as Create (all optional)
+
+**Note:** Use the Adjust Stock endpoint to modify stock levels rather than direct PATCH.
+
+### Adjust Stock
+
+```http
+POST /materials/:id/adjust-stock
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Request Body:**
+
+<ParamField body="quantity" type="decimal" required>
+  Quantity to add (positive) or remove (negative)
+</ParamField>
+
+<ParamField body="unitCost" type="decimal" required>
+  Cost per unit for this transaction (min: 0)
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Reason or note for adjustment
+</ParamField>
+
+**Example - Stock Entry:**
+
+```json
+{
+  "quantity": 25.5,
+  "unitCost": 8200.00,
+  "note": "Compra proveedor ABC - Factura #12345"
+}
+```
+
+Creates a `ENTRADA` movement and increases stock by 25.5 units.
+
+**Example - Stock Adjustment:**
+
+```json
+{
+  "quantity": -3.2,
+  "unitCost": 8000.00,
+  "note": "Ajuste por inventario físico - merma detectada"
+}
+```
+
+Creates an `AJUSTE` movement and decreases stock by 3.2 units.
+
+### Delete Material
+
+```http
+DELETE /materials/:id
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+Note: Materials with consumption history cannot be deleted.
+
+---
+
+## Material Consumption (Work Orders)
+
+Material consumption is recorded from the Work Orders module:
+
+```http
+POST /work-orders/:workOrderId/consumptions
+```
+
+**Request Body:**
+
+<ParamField body="materialId" type="string" required>
+  Material ID to consume
+</ParamField>
+
+<ParamField body="quantity" type="decimal" required>
+  Quantity to consume (min: 0.001)
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Consumption note
+</ParamField>
+
+**Example:**
+
+```json
+{
+  "materialId": "mat123",
+  "quantity": 12.5,
+  "note": "Consumo para fabricación de estructura"
+}
+```
+
+**System Actions:**
+
+1. Validates material exists and has sufficient stock
+2. Deducts `quantity` from material stock
+3. Snapshots current `unitCost` to `unitCostSnapshot` (preserves historical cost)
+4. Creates `MaterialConsumption` record linked to work order
+5. Creates `MaterialMovement` of type `CONSUMO`
+6. Creates `MATERIAL_CONSUMIDO` event in operation log
+
+**Cost Snapshot:**
+
+The `unitCostSnapshot` field captures the material's unit cost at the moment of consumption. This ensures accurate cost tracking even if the material's `unitCost` changes later due to new purchases.
+
+---
+
+## Data Models
+
+### Material Fields
+
+<ParamField path="id" type="string">
+  Unique identifier (CUID)
+</ParamField>
+
+<ParamField path="companyId" type="string">
+  Company/tenant identifier
+</ParamField>
+
+<ParamField path="name" type="string">
+  Material name
+</ParamField>
+
+<ParamField path="category" type="string | null">
+  Material category or family
+</ParamField>
+
+<ParamField path="unit" type="string">
+  Unit of measure
+</ParamField>
+
+<ParamField path="unitCost" type="decimal">
+  Current cost per unit
+</ParamField>
+
+<ParamField path="stock" type="decimal">
+  Current stock level (precision: 12,3)
+</ParamField>
+
+<ParamField path="isActive" type="boolean">
+  Active status (default: true)
+</ParamField>
+
+<ParamField path="createdAt" type="datetime">
+  Creation timestamp
+</ParamField>
+
+<ParamField path="updatedAt" type="datetime">
+  Last update timestamp
+</ParamField>
+
+<ParamField path="movements" type="array">
+  Array of MaterialMovement objects
+</ParamField>
+
+<ParamField path="consumptions" type="array">
+  Array of MaterialConsumption objects
+</ParamField>
+
+### MaterialMovement Fields
+
+<ParamField path="id" type="string">
+  Movement ID
+</ParamField>
+
+<ParamField path="materialId" type="string">
+  Material ID
+</ParamField>
+
+<ParamField path="type" type="enum">
+  `ENTRADA`, `AJUSTE`, or `CONSUMO`
+</ParamField>
+
+<ParamField path="quantity" type="decimal">
+  Quantity moved (positive or negative)
+</ParamField>
+
+<ParamField path="unitCost" type="decimal">
+  Unit cost at time of movement
+</ParamField>
+
+<ParamField path="note" type="string | null">
+  Movement note or reason
+</ParamField>
+
+<ParamField path="createdAt" type="datetime">
+  Movement timestamp
+</ParamField>
+
+### MaterialConsumption Fields
+
+<ParamField path="id" type="string">
+  Consumption ID
+</ParamField>
+
+<ParamField path="workOrderId" type="string">
+  Work order ID
+</ParamField>
+
+<ParamField path="materialId" type="string">
+  Material ID
+</ParamField>
+
+<ParamField path="createdByUserId" type="string | null">
+  User who recorded consumption
+</ParamField>
+
+<ParamField path="quantity" type="decimal">
+  Quantity consumed
+</ParamField>
+
+<ParamField path="unitCostSnapshot" type="decimal">
+  Unit cost at time of consumption (frozen)
+</ParamField>
+
+<ParamField path="note" type="string | null">
+  Consumption note
+</ParamField>
+
+<ParamField path="consumedAt" type="datetime">
+  Consumption timestamp
+</ParamField>
+
+---
+
+## Frontend Implementation
+
+The `MaterialsPage.tsx` component provides:
+
+### Materials List
+
+- **Search**: Filter materials by name
+- **Stock levels**: Color-coded indicators for low stock
+- **Unit cost display**: Current cost per unit
+- **Category badges**: Visual grouping by material type
+
+### CRUD Operations
+
+<Tabs>
+  <Tab title="Create">
+    1. Click "+ Nuevo Material" button
+    2. Enter name, category, unit, unit cost, and initial stock
+    3. Click "Guardar"
+    4. Material appears in inventory list
+  </Tab>
+  
+  <Tab title="Edit">
+    1. Click "Editar" on material row
+    2. Modify name, category, or unit cost
+    3. **Note:** Use "Ajustar Stock" for stock changes
+    4. Click "Guardar"
+  </Tab>
+  
+  <Tab title="Adjust Stock">
+    1. Click "Ajustar Stock" button
+    2. Enter positive (entry) or negative (consumption) quantity
+    3. Set unit cost for this transaction
+    4. Add note explaining the adjustment
+    5. Click "Confirmar"
+    6. Stock updated with movement record created
+  </Tab>
+</Tabs>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Naming Conventions">
+    - Use descriptive names: `Chapa de acero galvanizado 1.5mm`
+    - Include key specifications in the name
+    - Keep category consistent: `Metales`, `Soldadura`, `Pinturas`
+  </Accordion>
+  
+  <Accordion title="Unit of Measure">
+    Common units:
+    - `kg` - Kilograms (electrodes, wire)
+    - `m` - Meters (profiles, tubes)
+    - `m2` - Square meters (sheets, plates)
+    - `l` - Liters (liquids, paints)
+    - `u` - Units (bolts, fittings)
+    
+    Keep units consistent across similar materials.
+  </Accordion>
+  
+  <Accordion title="Stock Adjustments">
+    - Always use the Adjust Stock endpoint, not direct PATCH
+    - Positive quantities for purchases/entries
+    - Negative quantities for corrections/shrinkage
+    - Include detailed notes:
+      - Purchase: "Compra proveedor X - Factura #123"
+      - Adjustment: "Inventario físico - merma detectada"
+      - Return: "Devolución OT-2026-045"
+  </Accordion>
+  
+  <Accordion title="Cost Management">
+    - Update `unitCost` when purchasing at new prices
+    - Use weighted average cost for accurate valuation
+    - Cost snapshots on consumption preserve historical accuracy
+    - Review cost deviations in productivity reports
+  </Accordion>
+  
+  <Accordion title="Consumption Tracking">
+    - Record consumptions in real-time during production
+    - Add notes for unusual consumption patterns
+    - Compare consumption vs. estimates for process improvement
+    - Use consumption data to refine future quotations
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Usage Examples
+
+### Creating a Material
+
+```typescript
+import { api } from '@/shared/api/http';
+
+const createMaterial = async () => {
+  const response = await api.post('/materials', {
+    name: 'Tubo estructural 50x50x2mm',
+    category: 'Perfiles',
+    unit: 'm',
+    unitCost: 3500.00,
+    stock: 100.0
+  });
+  return response.data;
+};
+```
+
+### Stock Entry (Purchase)
+
+```typescript
+const recordPurchase = async (materialId: string) => {
+  const response = await api.post(`/materials/${materialId}/adjust-stock`, {
+    quantity: 50.0,
+    unitCost: 3600.00,  // New purchase price
+    note: 'Compra Proveedor MetalCorp - Factura #A-12345'
+  });
+  return response.data;
+};
+```
+
+### Stock Adjustment (Inventory)
+
+```typescript
+const adjustInventory = async (materialId: string) => {
+  const response = await api.post(`/materials/${materialId}/adjust-stock`, {
+    quantity: -2.5,  // Negative for reduction
+    unitCost: 3500.00,
+    note: 'Ajuste inventario físico - merma por oxidación'
+  });
+  return response.data;
+};
+```
+
+### Recording Consumption in Work Order
+
+```typescript
+const consumeMaterial = async (workOrderId: string, materialId: string) => {
+  const response = await api.post(
+    `/work-orders/${workOrderId}/consumptions`,
+    {
+      materialId: materialId,
+      quantity: 15.5,
+      note: 'Consumo para estructura principal'
+    }
+  );
+  return response.data;
+};
+```
+
+---
+
+## Related Features
+
+- [Work Orders](/features/work-orders) - Record material consumption in production
+- [Quotations](/features/quotations) - Estimate material costs for quotes
+- [Reports](/features/reports) - Material cost analysis and deviation reports
+- [Audit Log](/features/audit) - Track all material movements and changes

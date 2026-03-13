@@ -1,0 +1,500 @@
+---
+title: Audit Log & Traceability
+description: Complete system audit trail for compliance, security, and operational transparency
+icon: list-check
+---
+
+## Overview
+
+The Audit Log system provides comprehensive traceability across all critical operations in DRAIT Mini-MES. Every create, update, delete, and status change is recorded with user attribution, timestamps, and before/after snapshots for complete accountability.
+
+<CardGroup cols={2}>
+  <Card title="Full Traceability" icon="clock-rotate-left">
+    Track all changes across entities with complete history
+  </Card>
+  <Card title="User Attribution" icon="user-shield">
+    Know who performed each action with role information
+  </Card>
+  <Card title="Before/After Snapshots" icon="code-compare">
+    JSON snapshots of entity state before and after changes
+  </Card>
+  <Card title="Compliance Ready" icon="shield-check">
+    Audit trail for regulatory compliance and quality systems
+  </Card>
+</CardGroup>
+
+---
+
+## Audit Scope
+
+The system audits the following entities:
+
+<Steps>
+  <Step title="COMPANY">
+    Company settings changes, configuration updates
+  </Step>
+  <Step title="USER">
+    User creation, role changes, password changes, login events
+  </Step>
+  <Step title="CLIENT">
+    Client CRUD operations, contact updates
+  </Step>
+  <Step title="QUOTATION">
+    Quote creation, edits, status changes, approvals
+  </Step>
+  <Step title="WORK_ORDER">
+    OT creation, updates, status changes, assignments, deliveries
+  </Step>
+  <Step title="RESOURCE">
+    Resource creation, status updates, assignments
+  </Step>
+  <Step title="MATERIAL">
+    Material CRUD, stock adjustments, consumption
+  </Step>
+  <Step title="AUTH">
+    Authentication events, login attempts, session management
+  </Step>
+</Steps>
+
+---
+
+## Audit Actions
+
+Each audit log entry records one of these action types:
+
+| Action | Description | Example Use Cases |
+|--------|-------------|-------------------|
+| `CREATE` | Entity created | New client, work order, material |
+| `UPDATE` | Entity updated | Edit client info, update OT details |
+| `DELETE` | Entity deleted | Remove client, delete material |
+| `STATUS_CHANGE` | Status modified | Quote approval, OT status change |
+| `ASSIGN` | Resource assigned | Assign operator to work order |
+| `DELIVERY_CLOSE` | Delivery completed | Close and deliver work order |
+| `PASSWORD_CHANGE` | Password updated | User password reset |
+| `ROLE_CHANGE` | User role modified | Promote operator to supervisor |
+| `SETTINGS_CHANGE` | Settings updated | Company configuration change |
+| `LOGIN` | User logged in | Authentication event |
+
+---
+
+## API Endpoints
+
+### List Audit Logs
+
+```http
+GET /audit-logs
+```
+
+**Required Roles:** `DUENO`, `SUPERVISOR`, `ADMIN`
+
+**Query Parameters:**
+
+<ParamField query="entityType" type="string" optional>
+  Filter by entity: `COMPANY`, `USER`, `CLIENT`, `QUOTATION`, `WORK_ORDER`, `RESOURCE`, `MATERIAL`, `AUTH`
+</ParamField>
+
+<ParamField query="action" type="string" optional>
+  Filter by action: `CREATE`, `UPDATE`, `DELETE`, `STATUS_CHANGE`, `ASSIGN`, `DELIVERY_CLOSE`, `PASSWORD_CHANGE`, `ROLE_CHANGE`, `SETTINGS_CHANGE`, `LOGIN`
+</ParamField>
+
+<ParamField query="limit" type="integer" optional>
+  Number of records to return (min: 1, max: 200, default: 50)
+</ParamField>
+
+**Response:**
+
+```json
+[
+  {
+    "id": "audit123",
+    "companyId": "company456",
+    "userId": "user789",
+    "user": {
+      "id": "user789",
+      "fullName": "García, Juan",
+      "role": "SUPERVISOR",
+      "email": "jgarcia@empresa.com"
+    },
+    "entityType": "WORK_ORDER",
+    "entityId": "wo123",
+    "action": "STATUS_CHANGE",
+    "before": {
+      "status": "PLANIFICADA",
+      "updatedAt": "2026-03-15T08:00:00Z"
+    },
+    "after": {
+      "status": "EN_PROCESO",
+      "updatedAt": "2026-03-15T08:15:00Z"
+    },
+    "metadata": {
+      "note": "Inicio de producción",
+      "code": "OT-2026-045"
+    },
+    "createdAt": "2026-03-15T08:15:00Z"
+  },
+  {
+    "id": "audit124",
+    "companyId": "company456",
+    "userId": "user890",
+    "user": {
+      "id": "user890",
+      "fullName": "Pérez, Ana",
+      "role": "ADMIN",
+      "email": "aperez@empresa.com"
+    },
+    "entityType": "QUOTATION",
+    "entityId": "q456",
+    "action": "STATUS_CHANGE",
+    "before": {
+      "status": "ENVIADO"
+    },
+    "after": {
+      "status": "APROBADO"
+    },
+    "metadata": {
+      "code": "Q-2026-015"
+    },
+    "createdAt": "2026-03-14T16:30:00Z"
+  }
+]
+```
+
+---
+
+## Data Model
+
+### AuditLog Fields
+
+<ParamField path="id" type="string">
+  Unique audit log ID (CUID)
+</ParamField>
+
+<ParamField path="companyId" type="string">
+  Company/tenant identifier
+</ParamField>
+
+<ParamField path="userId" type="string | null">
+  User who performed the action (null for system actions)
+</ParamField>
+
+<ParamField path="user" type="object | null">
+  User details:
+  - `id`: User ID
+  - `fullName`: User's full name
+  - `role`: User's role
+  - `email`: User's email
+</ParamField>
+
+<ParamField path="entityType" type="enum">
+  Type of entity: `COMPANY`, `USER`, `CLIENT`, `QUOTATION`, `WORK_ORDER`, `RESOURCE`, `MATERIAL`, `AUTH`
+</ParamField>
+
+<ParamField path="entityId" type="string">
+  ID of the affected entity
+</ParamField>
+
+<ParamField path="action" type="enum">
+  Action performed (see Audit Actions table above)
+</ParamField>
+
+<ParamField path="before" type="json | null">
+  Entity state before the change (for UPDATE, DELETE actions)
+</ParamField>
+
+<ParamField path="after" type="json | null">
+  Entity state after the change (for CREATE, UPDATE actions)
+</ParamField>
+
+<ParamField path="metadata" type="json | null">
+  Additional context:
+  - Entity code (e.g., `OT-2026-045`)
+  - User-provided notes
+  - Related entity IDs
+  - IP address (for LOGIN events)
+</ParamField>
+
+<ParamField path="createdAt" type="datetime">
+  Timestamp of the action
+</ParamField>
+
+---
+
+## Frontend Implementation
+
+The `AuditPage.tsx` component provides:
+
+### Audit Log Table
+
+**Columns:**
+- **Timestamp**: When the action occurred
+- **User**: Who performed the action (with role badge)
+- **Entity**: What was affected (type + code)
+- **Action**: What happened (with color-coded badge)
+- **Details**: Expandable view of before/after snapshots
+
+### Filtering
+
+<Tabs>
+  <Tab title="Entity Filter">
+    Dropdown to filter by entity type:
+    - All Entities
+    - Company
+    - Users
+    - Clients
+    - Quotations
+    - Work Orders
+    - Resources
+    - Materials
+    - Authentication
+  </Tab>
+  
+  <Tab title="Action Filter">
+    Filter by action type:
+    - All Actions
+    - Create
+    - Update
+    - Delete
+    - Status Change
+    - Assignment
+    - Delivery Close
+    - Password Change
+    - Role Change
+    - Settings Change
+    - Login
+  </Tab>
+  
+  <Tab title="Limit">
+    Number of records to display:
+    - 50 (default)
+    - 100
+    - 200
+  </Tab>
+</Tabs>
+
+### Before/After Comparison
+
+For UPDATE and STATUS_CHANGE actions, the UI shows:
+
+**Before:**
+```json
+{
+  "status": "PLANIFICADA",
+  "priority": 3
+}
+```
+
+**After:**
+```json
+{
+  "status": "EN_PROCESO",
+  "priority": 1
+}
+```
+
+Differences are highlighted for easy identification.
+
+---
+
+## Use Cases
+
+### Compliance & Quality
+
+**ISO 9001 Traceability:**
+- Track all changes to work orders for quality audit trails
+- Document who approved quotations and when
+- Verify delivery close procedures
+
+**Regulatory Compliance:**
+- Maintain complete audit logs for inspections
+- Demonstrate accountability in production processes
+- Track material consumption for lot traceability
+
+### Security & Access Control
+
+**Login Monitoring:**
+- Review `LOGIN` events for authentication patterns
+- Detect unauthorized access attempts
+- Monitor user activity across shifts
+
+**Permission Verification:**
+- Audit `ROLE_CHANGE` events for access control
+- Track `PASSWORD_CHANGE` for security policies
+- Review who performed sensitive operations
+
+### Operational Insights
+
+**Process Analysis:**
+- Review status change patterns in work orders
+- Analyze quotation approval times
+- Track resource assignment frequency
+
+**Error Investigation:**
+- Identify when/who made incorrect updates
+- Review entity state before problematic changes
+- Reconstruct timeline of events
+
+**Performance Metrics:**
+- Count operations per user for productivity
+- Track time between status changes
+- Measure process cycle times
+
+---
+
+## Querying Examples
+
+### Get Recent Work Order Changes
+
+```typescript
+import { api } from '@/shared/api/http';
+
+const getWorkOrderAudit = async () => {
+  const response = await api.get('/audit-logs', {
+    params: {
+      entityType: 'WORK_ORDER',
+      limit: 100
+    }
+  });
+  return response.data;
+};
+```
+
+### Track Status Changes Only
+
+```typescript
+const getStatusChanges = async () => {
+  const response = await api.get('/audit-logs', {
+    params: {
+      action: 'STATUS_CHANGE',
+      limit: 50
+    }
+  });
+  return response.data;
+};
+```
+
+### Monitor User Logins
+
+```typescript
+const getLoginEvents = async () => {
+  const response = await api.get('/audit-logs', {
+    params: {
+      entityType: 'AUTH',
+      action: 'LOGIN',
+      limit: 200
+    }
+  });
+  return response.data;
+};
+```
+
+### Audit Specific Entity
+
+To get all changes to a specific work order, quotation, etc., you would typically:
+
+1. Filter by `entityType`
+2. Client-side filter by `entityId` (or use metadata if available)
+
+```typescript
+const getEntityHistory = async (entityId: string) => {
+  const response = await api.get('/audit-logs', {
+    params: {
+      entityType: 'WORK_ORDER',
+      limit: 200
+    }
+  });
+  
+  // Client-side filter by entityId
+  return response.data.filter(log => log.entityId === entityId);
+};
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Audit Log Retention">
+    - Retain logs for regulatory compliance period (typically 5-7 years)
+    - Implement archival strategy for old logs
+    - Consider log rotation and compression
+    - Backup audit logs separately from operational data
+  </Accordion>
+  
+  <Accordion title="Metadata Usage">
+    Include useful context in metadata:
+    - Entity codes (e.g., `OT-2026-045`, `Q-2026-015`)
+    - User-provided notes or reasons
+    - Related entity IDs for cross-references
+    - IP addresses for authentication events
+    - Client names for easier filtering
+  </Accordion>
+  
+  <Accordion title="Privacy & Security">
+    - Restrict audit log access to authorized roles only
+    - Avoid logging sensitive data (passwords, PII)
+    - Use `before`/`after` snapshots selectively
+    - Monitor for suspicious audit patterns
+  </Accordion>
+  
+  <Accordion title="Performance Optimization">
+    - Index `companyId`, `createdAt`, `entityType`, `action`
+    - Use pagination with `limit` parameter
+    - Cache frequently accessed audit summaries
+    - Consider separate database for audit logs at scale
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Automated Audit Triggers
+
+The system automatically creates audit logs for:
+
+**Backend Service Layer:**
+- All CRUD operations via service methods
+- Status changes (quotations, work orders)
+- Resource assignments
+- Material stock adjustments
+- Delivery closures
+
+**Authentication:**
+- Login events (success/failure)
+- Password changes
+- Role modifications
+
+**Example Service Integration:**
+
+```typescript
+// In work-orders.service.ts
+async changeStatus(user: JwtUser, id: string, dto: UpdateWorkOrderStatusDto) {
+  const before = await this.findOne(user, id);
+  
+  const updated = await this.prisma.workOrder.update({
+    where: { id },
+    data: { status: dto.status }
+  });
+  
+  // Create audit log
+  await this.auditService.log({
+    companyId: user.companyId,
+    userId: user.sub,
+    entityType: 'WORK_ORDER',
+    entityId: id,
+    action: 'STATUS_CHANGE',
+    before: { status: before.status },
+    after: { status: updated.status },
+    metadata: { code: updated.code, note: dto.note }
+  });
+  
+  return updated;
+}
+```
+
+---
+
+## Related Features
+
+- [Work Orders](/features/work-orders) - Track all OT changes and status updates
+- [Quotations](/features/quotations) - Audit quote approvals and conversions
+- [Materials](/features/materials) - Monitor stock adjustments and consumption
+- [Resources](/features/resources) - Track resource assignments and status changes

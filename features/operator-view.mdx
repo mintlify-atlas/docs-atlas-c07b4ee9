@@ -1,0 +1,354 @@
+---
+title: 'Operator View (Mi Turno)'
+description: 'Shop floor interface for operators to track time, register material consumption, and log work notes'
+icon: 'user-hard-hat'
+---
+
+## Overview
+
+The **Operator View** (Terminal Operador - "Mis Órdenes Asignadas") is the primary interface for shop floor workers to manage their assigned work orders. Operators can start/pause/finish orders, register material consumption from inventory, and log operational notes in real-time.
+
+<Info>
+  This view shows **only the orders assigned to the logged-in operator**, filtered using the `assignedToMe=true` API parameter.
+</Info>
+
+## Key Features
+
+### Work Queue Management
+
+The main table displays all orders assigned to the current operator with:
+
+| Column | Description |
+|--------|-------------|
+| **OT** | Work order code (e.g., "OT-2024-0156") |
+| **Título** | Brief description of the work |
+| **Estado** | Current status with color-coded badge |
+| **Panel de Control** | Action buttons for order lifecycle |
+
+#### Status Indicators
+
+- `EN_PROCESO` (In Process) - Green badge - Order is actively running
+- `PLANIFICADA` (Planned) - Blue badge - Ready to start
+- `PENDIENTE` (Pending) - Gray badge - Awaiting assignment
+- `PAUSADA` (Paused) - Red badge - Temporarily stopped
+- `RETRABAJO` (Rework) - Orange badge - Requires corrections
+- `FINALIZADA` (Finished) - Gray badge - Completed by operator
+
+### Order Lifecycle Controls
+
+Operators control order flow using action buttons:
+
+#### ▶ Iniciar / Reanudar (Start / Resume)
+
+Shown when order is in:
+- `PLANIFICADA` (Planned)
+- `PENDIENTE` (Pending)  
+- `PAUSADA` (Paused)
+- `RETRABAJO` (Rework)
+
+**Behavior:**
+- Creates an `INICIO` (start) or `REANUDACION` (resume) event
+- Changes order status to `EN_PROCESO`
+- Starts time tracking for the order
+
+#### ⏸ Pausar (Pause)
+
+Shown when order is `EN_PROCESO`.
+
+**Behavior:**
+- Creates a `PAUSA` event
+- Changes status to `PAUSADA`
+- Stops time tracking temporarily
+- Use when waiting for materials, tooling, or assistance
+
+#### ⏹ Finalizar (Finish)
+
+Shown when order is `EN_PROCESO`.
+
+**Behavior:**  
+- Creates a `FINALIZACION` event
+- Changes status to `FINALIZADA`
+- Stops time tracking
+- Signals supervisor that work is complete
+
+<Warning>
+  Once an order is marked `FINALIZADA`, operators cannot make further changes. If additional work is needed, a supervisor must reopen or create a rework order.
+</Warning>
+
+#### 📦 Insumos y Notas (Materials & Notes)
+
+Toggles the detailed consumption and log panel for the selected order.
+
+### Material Consumption Registration
+
+When an order is selected, the left panel allows operators to register materials consumed:
+
+#### Step 1: Select Material
+
+Dropdown shows all materials from inventory with:
+```
+Material Name (Stock: 1,250.5 kg)
+```
+
+#### Step 2: Enter Quantity
+
+Numeric input with:
+- Minimum: 0.001
+- Step: 0.001 (supports decimal quantities)
+- Placeholder: "0.00"
+
+#### Step 3: Add Note (Optional)
+
+Text input for observations like:
+- "Consumo estimado, verificar desperdicio"
+- "Material de mala calidad, se descartó 10%"
+
+#### Step 4: Register
+
+Click **"+ Registrar Consumo Físico"** button.
+
+**What happens:**
+- Creates a material consumption record
+- Deducts quantity from inventory stock
+- Timestamps the consumption
+- Links to current work order
+- Invalidates queries to refresh the view
+
+<Note>
+  Material registrations are **immediate and permanent**. Ensure quantities are accurate before submitting, as they affect inventory levels and cost calculations.
+</Note>
+
+### Consumption History
+
+Below the registration form, a list shows all materials already consumed for this order:
+
+```
+15:23hs - Acero SAE 1045
+                          2.5 kg
+14:10hs - Pintura epoxi negra  
+                          0.75 L
+```
+
+Each entry displays:
+- **Time**: When consumption was registered
+- **Material name**: From inventory
+- **Quantity + unit**: Amount consumed
+
+### Operational Log (Bitácora)
+
+The right panel allows operators to record field notes:
+
+#### Adding a Note
+
+1. Type in the **Agregar Comentario** textarea:
+   ```
+   Se detecta desgaste en mecha. Se cambia herramienta para la segunda pasada.
+   ```
+
+2. Click **"Asentar en Bitácora"** (Log to journal)
+
+3. Note appears in the history below with:
+   - Operator name
+   - Date and time
+   - Full note text
+
+#### Use Cases for Notes
+
+- **Tool changes**: "Reemplazó fresa de 10mm por desgaste"
+- **Quality issues**: "Pieza 3 fuera de tolerancia, se reprocesa"
+- **Process deviations**: "Se aumentó temperatura a 220°C por humedad ambiente"
+- **Delays**: "Esperando grúa para voltear pieza, 20 min parado"
+- **Material issues**: "Lote de chapa vino oxidado, se limpia antes de soldar"
+
+### History Timeline
+
+Notes display in reverse chronological order (newest first) with:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Juan Pérez                        13/03 15:45       │
+│ Se detecta desgaste en mecha. Se cambia herramienta │
+│ para la segunda pasada.                             │
+└─────────────────────────────────────────────────────┘
+```
+
+- **Left side**: Operator's full name
+- **Right side**: Date and time
+- **Body**: Note text with left blue border accent
+
+## User Interface Layout
+
+### Header
+
+```
+👷 TERMINAL OPERADOR
+Mis Órdenes Asignadas  
+Registro de tiempos, pausas operativas y consumos de materiales en planta.
+
+                                    [Turno Actual]
+```
+
+### Search and Filter
+
+```
+┌──────────────────────────────────────────────────────┐
+│ Cola de Trabajo                                      │
+│ [🔍 Buscar OT o título...]           [X OT asignadas]│
+└──────────────────────────────────────────────────────┘
+```
+
+Search filters orders in real-time by:
+- Order code (e.g., "OT-2024")
+- Order title (e.g., "mecanizado")
+
+Case-insensitive, partial match.
+
+### Empty State
+
+When no orders are assigned:
+
+```
+☕
+No tenes ordenes asignadas. Todo al dia.
+```
+
+### Selected Order Indicator
+
+When an order is selected for material/note entry:
+
+```
+ℹ️ Imputando materiales a: OT-2024-0089
+```
+
+Blue info banner appears above material form.
+
+## Two-Panel Detail Layout
+
+When an order is selected, the page expands to show:
+
+```
+┌──────────────────────────┬──────────────────────────┐
+│ 📦 Registrar Consumo     │ 💬 Bitácora y Novedades  │
+│                          │                          │
+│ [Material dropdown]      │ [Comment textarea]       │
+│ [Quantity] [Note]        │ [Asentar en Bitácora]    │
+│ [+ Registrar Consumo]    │                          │
+│                          │ ──────────────────────   │
+│ ──────────────────────   │ Historial Operativo      │
+│ Consumos ya registrados  │ [Note 1]                 │
+│ [Consumption 1]          │ [Note 2]                 │
+│ [Consumption 2]          │ [Note 3]                 │
+└──────────────────────────┴──────────────────────────┘
+```
+
+## API Integration
+
+### Get Assigned Orders
+
+**Endpoint**: `GET /work-orders?assignedToMe=true`
+
+**Query Key**: `['operator-orders']`
+
+**Filters**: Returns only orders where the current authenticated user is assigned as a resource.
+
+### Get Order Details
+
+**Endpoint**: `GET /work-orders/{id}`
+
+**Query Key**: `['operator-order-detail', selectedOrderId]`
+
+**Enabled**: Only when an order is selected
+
+**Contains**: Full operation logs and material consumptions for the selected order.
+
+### Post Event
+
+**Endpoint**: `POST /work-orders/{id}/events`
+
+**Payload**:
+```json
+{
+  "eventType": "INICIO" | "PAUSA" | "REANUDACION" | "FINALIZACION" | "NOTA",
+  "note": "Optional descriptive text"
+}
+```
+
+### Post Consumption
+
+**Endpoint**: `POST /work-orders/{id}/consumptions`
+
+**Payload**:
+```json
+{
+  "materialId": "uuid",
+  "quantity": 2.5,
+  "note": "Optional observation"
+}
+```
+
+## Best Practices
+
+### For Operators
+
+1. **Start orders promptly**: Click "Iniciar" as soon as you begin physical work for accurate time tracking
+2. **Pause during waiting**: Use "Pausar" when waiting for materials, crane, or assistance—don't inflate time
+3. **Register materials immediately**: Log consumption right after use to avoid forgetting quantities
+4. **Add notes for deviations**: Document any process changes, tool swaps, or quality issues
+5. **Finish when complete**: Click "Finalizar" only when work is truly done and ready for inspection
+
+### For Supervisors
+
+1. **Train on material accuracy**: Emphasize that consumption records affect costing and inventory
+2. **Review logs regularly**: Check bitácora entries for recurring issues or training opportunities
+3. **Encourage pause usage**: Better to have accurate pause records than inflated process times
+4. **Monitor search usage**: If operators struggle to find orders, consider limiting assignments per person
+
+## Workflow Example
+
+**Operator María starts her shift at 7:00 AM**
+
+1. Logs into DRAIT Mini-MES
+2. Navigates to "Mis Órdenes Asignadas"
+3. Sees 3 orders: 2 Planificadas, 1 Pausada from yesterday
+4. Clicks **▶ Reanudar** on the paused order (OT-2024-0145)
+5. Status changes to `EN_PROCESO` (green badge)
+6. Works for 45 minutes, consumes 3.2 kg of steel
+7. Clicks **📦 Insumos y Notas** to expand detail panel
+8. Selects "Acero SAE 1045" from material dropdown
+9. Enters quantity: `3.2`
+10. Adds note: "Material de nuevo lote, excelente calidad"
+11. Clicks **+ Registrar Consumo Físico**
+12. Consumption appears in history: "07:45hs - Acero SAE 1045 | 3.2 kg"
+13. Needs to swap a worn drill bit, adds bitácora note: "Cambio mecha 8mm por desgaste"
+14. Continues work, finishes at 8:30 AM
+15. Clicks **⏹ Finalizar**
+16. Order status changes to `FINALIZADA`
+17. Moves to next order in queue
+
+## Troubleshooting
+
+<Accordion title="I don't see any orders in my queue">
+  This means no work orders are currently assigned to you. Contact your supervisor to:
+  - Verify you're assigned to active orders in the Work Orders page
+  - Check that your user account is linked to a Human Resource
+  - Confirm you're logged in with the correct user
+</Accordion>
+
+<Accordion title="The 'Iniciar' button is disabled">
+  The start button only appears for orders in specific statuses (PENDIENTE, PLANIFICADA, PAUSADA, RETRABAJO). If the order is already EN_PROCESO or FINALIZADA, you'll see different controls. Check the status badge.
+</Accordion>
+
+<Accordion title="I registered the wrong material quantity">
+  Material consumptions cannot be edited or deleted by operators to maintain audit integrity. Contact your supervisor or admin to create a correcting entry or adjustment in the system.
+</Accordion>
+
+<Accordion title="Material dropdown is empty">
+  This means no materials are registered in the system inventory. Ask your supervisor or admin to add materials in the Materials page before you can log consumption.
+</Accordion>
+
+## Related Features
+
+- [Dispatch Center](/features/dispatch-center) - Supervisor's monitoring view
+- [Work Orders](/features/work-orders) - Full order lifecycle management
+- [Materials](/features/materials) - Inventory and material master data
+- [Resources](/features/resources) - Operator and machine definitions

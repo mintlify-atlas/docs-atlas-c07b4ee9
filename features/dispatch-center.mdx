@@ -1,0 +1,255 @@
+---
+title: 'Dispatch Center'
+description: 'Real-time supervisor control panel for monitoring and managing shop floor operations'
+icon: 'tower-control'
+---
+
+## Overview
+
+The **Dispatch Center** (Centro de Control) is the supervisor's command hub for real-time shop floor monitoring. It provides a live view of all work orders in execution, operators on shift, pending queues, and delayed orders requiring intervention.
+
+<Info>
+  **Auto-refresh enabled**: The Dispatch Center automatically updates every 30 seconds to ensure supervisors always see the current production state.
+</Info>
+
+## Key Features
+
+### Real-Time Production Monitor
+
+The page displays four critical metrics at the top:
+
+| Metric | Description | Icon |
+|--------|-------------|------|
+| **In Process** | Orders currently being worked | ⚙️ |
+| **Paused** | Orders temporarily stopped | ⏸ |
+| **Delayed** | Orders past commitment date | ⏰ |
+| **Active Operators** | Workers currently assigned to orders | 👷 |
+
+### Orders in Execution
+
+The main panel shows all active work orders with:
+
+- **Order code**: Unique identifier (e.g., "OT-2024-0089")
+- **Title**: Work description
+- **Status badge**: 
+  - `EN_PROCESO` (In Process) - Yellow
+  - `PAUSADA` (Paused) - Orange border
+- **Client name**: Customer for traceability
+- **Commitment date**: Delivery deadline
+- **Assigned resources**: List of operators and machines assigned
+- **Delay indicator**: Red "⏰ Atrasada" badge if past due date
+
+#### Resource Assignment Display
+
+Each order card shows assigned resources as chips:
+
+```
+👷 Juan Pérez    🔧 Torno CNC-01    👷 María López
+```
+
+- 👷 = Human resource (operator)
+- 🔧 = Machine/equipment resource
+
+<Note>
+  Resources are assigned through the Work Orders page. The Dispatch Center is primarily a monitoring view.
+</Note>
+
+### Operators on Shift
+
+The right sidebar displays all operators currently working with:
+
+- **Avatar badge**: Circle with operator's first initial
+- **Full name**: Operator's display name  
+- **Assigned orders**: Comma-separated list of order codes
+
+#### Empty State
+
+```
+Sin operarios activos.
+```
+
+Shown when no operators are currently assigned to "In Process" orders.
+
+### Pending Queue (Next Up)
+
+Displays the top 10 pending orders sorted by priority:
+
+- **Order code and title**: Quick identification
+- **Priority label**: 
+  - 🔴 Alta (High) - Priority 1
+  - 🟡 Media-Alta (Medium-High) - Priority 2
+  - 🟢 Normal - Priority 3
+  - ⚪ Baja (Low) - Priority 4+
+
+This queue helps supervisors decide which orders to start next based on urgency.
+
+### Delayed Orders Table
+
+When orders are past their commitment date, a prominent red-bordered section appears showing:
+
+| Column | Description |
+|--------|-------------|
+| **OT** | Order code |
+| **Título** | Order title |
+| **Cliente** | Client name |
+| **Estado** | Current status |
+| **Vencimiento** | Commitment date (in red) |
+| **Días de atraso** | Days overdue (e.g., "+3 días") |
+
+<Warning>
+  The Dispatch Center prominently displays delayed orders with a "⚠️ X OTs atrasadas" badge in the header to ensure they receive immediate attention.
+</Warning>
+
+## Auto-Refresh Behavior
+
+The page automatically refetches data every 30 seconds using React Query:
+
+```tsx
+refetchInterval: 30000 // 30 seconds
+```
+
+This ensures supervisors always see:
+- Latest order statuses
+- Current operator assignments
+- Up-to-date delay calculations
+
+No manual refresh needed—the page updates itself.
+
+## Order Filtering Logic
+
+### Active Orders
+
+Shows orders with status:
+- `EN_PROCESO` (In Process)
+- `PAUSADA` (Paused)
+
+### Pending Orders  
+
+Shows orders that are:
+- Status: `PENDIENTE` or `PLANIFICADA`
+- NOT past commitment date
+- Sorted by priority (ascending)
+- Limited to top 10
+
+### Delayed Orders
+
+Shows orders that are:
+- NOT in `FINALIZADA`, `ENTREGADA`, or `CANCELADA` status
+- Past their `commitmentDate`
+
+## User Interface Components
+
+### Hero Header
+
+```
+🔭 DESPACHO OPERATIVO
+Centro de Control
+Estado en tiempo real del taller · Se actualiza automáticamente cada 30 segundos.
+
+[⚠️ X OTs atrasadas]  [Y en ejecución]
+```
+
+### Order Cards
+
+Each active order displays in a card with:
+
+- **Standard border**: Gray `var(--border)`
+- **Paused border**: Orange `var(--accent-orange)`  
+- **Delayed border**: Red `var(--destructive)`
+
+### Empty States
+
+**No active orders:**
+```
+😴
+Sin órdenes activas en este momento.
+```
+
+**No pending orders:**
+```
+Sin órdenes pendientes.
+```
+
+**No delayed orders:**
+Section is hidden entirely when no orders are delayed.
+
+## Layout Structure
+
+The page uses a two-column grid layout:
+
+```
+┌─────────────────────────────────────┬──────────────────────┐
+│                                     │                      │
+│  Orders in Execution                │  Operators on Shift  │
+│  (Left column - wider)              │  (Right sidebar)     │
+│                                     │                      │
+│                                     ├──────────────────────┤
+│                                     │                      │
+│                                     │  Pending Queue       │
+│                                     │  (Top 10)            │
+│                                     │                      │
+└─────────────────────────────────────┴──────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Delayed Orders Table (full width)                        │
+│  (Only shown if delayed orders exist)                     │
+└────────────────────────────────────────────────────────────┘
+```
+
+## API Integration
+
+**Endpoint**: `GET /work-orders`
+
+**Query Key**: `['supervisor-orders']`
+
+**Response**: Array of work order summaries including:
+- Order metadata (code, title, status, priority, dates)
+- Client information
+- Resource assignments with user details
+- Operation logs
+
+## Best Practices
+
+### For Supervisors
+
+1. **Monitor the auto-refresh**: No need to manually refresh—watch for status changes every 30 seconds
+2. **Check delayed orders first**: Address red-flagged orders at start of shift
+3. **Balance operator load**: Use the "Operators on Shift" panel to distribute work evenly
+4. **Prepare next assignments**: Review pending queue to plan upcoming starts
+5. **Investigate paused orders**: Orange-bordered orders may need resources or issue resolution
+
+### For Plant Managers
+
+1. **Keep browser tab open**: The auto-refresh only works when the page is active
+2. **Use with Dashboard**: Combine with [Executive Dashboard](/features/dashboard) for strategic + tactical view
+3. **Set up large display**: The Dispatch Center works well on wall-mounted monitors in production areas
+
+## Workflow Example
+
+**Morning Shift Start (8:00 AM)**
+
+1. Supervisor opens Dispatch Center
+2. Reviews delayed orders table—sees 2 orders overdue by 3 and 5 days
+3. Checks operators on shift—4 workers logged in
+4. Reviews pending queue—identifies high-priority orders ready to start
+5. Navigates to Work Orders page to assign delayed order to available operator
+6. Returns to Dispatch Center—sees order move from "Pending" to "In Process" after 30 seconds
+
+## Related Features
+
+- [Operator View](/features/operator-view) - Operator's personal work interface
+- [Work Orders](/features/work-orders) - Full order management
+- [Executive Dashboard](/features/dashboard) - High-level analytics
+
+## Troubleshooting
+
+<Accordion title="Why isn't my page auto-refreshing?">
+  React Query's `refetchInterval` only runs when the browser tab is active. If the tab is in the background, updates pause to save resources. Switch back to the tab to resume auto-refresh.
+</Accordion>
+
+<Accordion title="An order just started but isn't showing as 'In Process'">
+  Wait up to 30 seconds for the next auto-refresh cycle. If it still doesn't appear, check that the operator properly clicked "Iniciar" in their view and refresh the browser manually.
+</Accordion>
+
+<Accordion title="Why do some operators show but aren't in the 'Active Operators' count?">
+  The KPI counts only operators assigned to orders with status `EN_PROCESO`. Operators on `PAUSADA` orders appear in the sidebar but not the count.
+</Accordion>

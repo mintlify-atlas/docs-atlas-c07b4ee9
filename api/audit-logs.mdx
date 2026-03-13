@@ -1,0 +1,430 @@
+---
+title: 'Audit Logs API'
+description: 'Audit trail query endpoints for compliance and activity tracking'
+---
+
+## Overview
+
+The Audit Logs API provides access to the complete audit trail of all system actions. All write operations (create, update, delete) across the system are automatically logged with user attribution, timestamps, and state snapshots.
+
+## GET /audit-logs
+
+Query audit logs with filtering options.
+
+### Authentication
+**Required**: JWT Bearer token  
+**Roles**: `DUENO`, `SUPERVISOR`, `ADMIN`
+
+### Query Parameters
+
+<ParamField query="entityType" type="AuditEntityType">
+  Filter by entity type. Values: `COMPANY`, `USER`, `CLIENT`, `QUOTATION`, `WORK_ORDER`, `RESOURCE`, `MATERIAL`, `AUTH`.
+</ParamField>
+
+<ParamField query="action" type="AuditActionType">
+  Filter by action type. Values: `CREATE`, `UPDATE`, `DELETE`, `STATUS_CHANGE`, `ASSIGN`, `DELIVERY_CLOSE`, `PASSWORD_CHANGE`, `ROLE_CHANGE`, `SETTINGS_CHANGE`, `LOGIN`.
+</ParamField>
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of records to return. Range: 1-200.
+</ParamField>
+
+### Response
+
+Returns an array of audit log entries, ordered by creation date (newest first).
+
+<ResponseField name="id" type="string">
+  Audit log entry ID (CUID).
+</ResponseField>
+
+<ResponseField name="entityType" type="AuditEntityType">
+  Type of entity that was modified.
+</ResponseField>
+
+<ResponseField name="entityId" type="string">
+  ID of the entity that was modified.
+</ResponseField>
+
+<ResponseField name="action" type="AuditActionType">
+  Action that was performed.
+</ResponseField>
+
+<ResponseField name="before" type="object">
+  State of the entity before the action (JSON). `null` for CREATE actions.
+</ResponseField>
+
+<ResponseField name="after" type="object">
+  State of the entity after the action (JSON). `null` for DELETE actions.
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Additional context about the action (JSON).
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  ID of the user who performed the action. `null` for system actions.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  User information (expanded).
+  
+  <ResponseField name="id" type="string">
+    User ID.
+  </ResponseField>
+  
+  <ResponseField name="fullName" type="string">
+    User's full name.
+  </ResponseField>
+  
+  <ResponseField name="role" type="UserRole">
+    User's role.
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    User's email.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Timestamp when the action occurred (ISO 8601).
+</ResponseField>
+
+### Example Request - All Logs
+
+```bash
+curl -X GET "https://api.example.com/audit-logs?limit=20" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "entityType": "WORK_ORDER",
+    "entityId": "clx2b3c4d5e6f7g8h9i0j1k2",
+    "action": "STATUS_CHANGE",
+    "before": {
+      "status": "EN_PROCESO",
+      "updatedAt": "2026-03-13T10:00:00.000Z"
+    },
+    "after": {
+      "status": "FINALIZADA",
+      "finishedAt": "2026-03-13T16:30:00.000Z",
+      "updatedAt": "2026-03-13T16:30:00.000Z"
+    },
+    "metadata": {
+      "workOrderCode": "OT-2026-045",
+      "previousStatus": "EN_PROCESO",
+      "newStatus": "FINALIZADA",
+      "note": "Trabajo completado según especificaciones"
+    },
+    "userId": "clx4d5e6f7g8h9i0j1k2l3m4",
+    "user": {
+      "id": "clx4d5e6f7g8h9i0j1k2l3m4",
+      "fullName": "Carlos Rodríguez",
+      "role": "OPERARIO",
+      "email": "carlos.rodriguez@empresa.com"
+    },
+    "createdAt": "2026-03-13T16:30:00.000Z"
+  },
+  {
+    "id": "clx3c4d5e6f7g8h9i0j1k2l3",
+    "entityType": "QUOTATION",
+    "entityId": "clx5e6f7g8h9i0j1k2l3m4n5",
+    "action": "STATUS_CHANGE",
+    "before": {
+      "status": "ENVIADO"
+    },
+    "after": {
+      "status": "APROBADO",
+      "approvedAt": "2026-03-13T14:15:00.000Z"
+    },
+    "metadata": {
+      "quotationCode": "Q-2026-018",
+      "clientName": "Constructora del Sur SA"
+    },
+    "userId": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "user": {
+      "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+      "fullName": "Juan Pérez",
+      "role": "SUPERVISOR",
+      "email": "juan.perez@empresa.com"
+    },
+    "createdAt": "2026-03-13T14:15:00.000Z"
+  },
+  {
+    "id": "clx6f7g8h9i0j1k2l3m4n5o6",
+    "entityType": "MATERIAL",
+    "entityId": "clx7g8h9i0j1k2l3m4n5o6p7",
+    "action": "UPDATE",
+    "before": {
+      "stock": 1245.500,
+      "unitCost": 850.00
+    },
+    "after": {
+      "stock": 1120.000,
+      "unitCost": 850.00
+    },
+    "metadata": {
+      "materialName": "Perfil IPE 200",
+      "consumedQuantity": 125.5,
+      "workOrderCode": "OT-2026-044",
+      "reason": "Material consumption"
+    },
+    "userId": "clx4d5e6f7g8h9i0j1k2l3m4",
+    "user": {
+      "id": "clx4d5e6f7g8h9i0j1k2l3m4",
+      "fullName": "Carlos Rodríguez",
+      "role": "OPERARIO",
+      "email": "carlos.rodriguez@empresa.com"
+    },
+    "createdAt": "2026-03-13T12:00:00.000Z"
+  },
+  {
+    "id": "clx8h9i0j1k2l3m4n5o6p7q8",
+    "entityType": "USER",
+    "entityId": "clx9i0j1k2l3m4n5o6p7q8r9",
+    "action": "ROLE_CHANGE",
+    "before": {
+      "role": "OPERARIO"
+    },
+    "after": {
+      "role": "SUPERVISOR"
+    },
+    "metadata": {
+      "userEmail": "nuevo.supervisor@empresa.com",
+      "previousRole": "OPERARIO",
+      "newRole": "SUPERVISOR",
+      "reason": "Promotion"
+    },
+    "userId": "clx0a1b2c3d4e5f6g7h8i9j0",
+    "user": {
+      "id": "clx0a1b2c3d4e5f6g7h8i9j0",
+      "fullName": "Ana Martínez",
+      "role": "ADMIN",
+      "email": "ana.martinez@empresa.com"
+    },
+    "createdAt": "2026-03-13T09:30:00.000Z"
+  },
+  {
+    "id": "clxai0j1k2l3m4n5o6p7q8r9",
+    "entityType": "AUTH",
+    "entityId": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "action": "LOGIN",
+    "before": null,
+    "after": null,
+    "metadata": {
+      "ip": "192.168.1.100",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
+      "success": true
+    },
+    "userId": "clx1a2b3c4d5e6f7g8h9i0j1",
+    "user": {
+      "id": "clx1a2b3c4d5e6f7g8h9i0j1",
+      "fullName": "Juan Pérez",
+      "role": "SUPERVISOR",
+      "email": "juan.perez@empresa.com"
+    },
+    "createdAt": "2026-03-13T08:00:00.000Z"
+  }
+]
+```
+
+### Example Request - Filter by Entity Type
+
+```bash
+curl -X GET "https://api.example.com/audit-logs?entityType=WORK_ORDER&limit=50" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Request - Filter by Action Type
+
+```bash
+curl -X GET "https://api.example.com/audit-logs?action=STATUS_CHANGE&limit=30" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Example Request - Combined Filters
+
+```bash
+curl -X GET "https://api.example.com/audit-logs?entityType=QUOTATION&action=CREATE&limit=20" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Entity Types
+
+| Entity Type | Description |
+|-------------|-------------|
+| `COMPANY` | Company/tenant settings changes |
+| `USER` | User account operations |
+| `CLIENT` | Client record changes |
+| `QUOTATION` | Quotation operations |
+| `WORK_ORDER` | Work order operations |
+| `RESOURCE` | Resource management |
+| `MATERIAL` | Material inventory changes |
+| `AUTH` | Authentication events |
+
+## Action Types
+
+| Action Type | Description | Entities |
+|-------------|-------------|----------|
+| `CREATE` | Entity created | All |
+| `UPDATE` | Entity updated | All |
+| `DELETE` | Entity deleted | All |
+| `STATUS_CHANGE` | Status field changed | Quotations, Work Orders |
+| `ASSIGN` | Resource/user assigned | Work Orders |
+| `DELIVERY_CLOSE` | Work order delivered | Work Orders |
+| `PASSWORD_CHANGE` | Password updated | Users |
+| `ROLE_CHANGE` | User role changed | Users |
+| `SETTINGS_CHANGE` | Company settings modified | Company |
+| `LOGIN` | User logged in | Auth |
+
+## Audit Trail Details
+
+### Before/After Snapshots
+
+- **CREATE**: `before` is `null`, `after` contains the created entity
+- **UPDATE**: Both `before` and `after` contain full state
+- **DELETE**: `before` contains the entity, `after` is `null`
+- **STATUS_CHANGE**: Contains only the changed fields
+
+### Metadata Field
+
+The `metadata` field contains action-specific context:
+
+```json
+// Work Order Status Change
+{
+  "workOrderCode": "OT-2026-045",
+  "previousStatus": "EN_PROCESO",
+  "newStatus": "FINALIZADA",
+  "note": "User-provided note"
+}
+
+// Material Consumption
+{
+  "materialName": "Perfil IPE 200",
+  "consumedQuantity": 125.5,
+  "workOrderCode": "OT-2026-044",
+  "reason": "Material consumption"
+}
+
+// User Login
+{
+  "ip": "192.168.1.100",
+  "userAgent": "Mozilla/5.0...",
+  "success": true
+}
+```
+
+## Use Cases
+
+### Compliance Auditing
+Track all changes to critical records for regulatory compliance:
+```bash
+GET /audit-logs?entityType=WORK_ORDER&action=DELIVERY_CLOSE
+```
+
+### Security Monitoring
+Monitor authentication events and user changes:
+```bash
+GET /audit-logs?entityType=AUTH&action=LOGIN&limit=100
+```
+
+### Change History
+Review complete history of a specific entity type:
+```bash
+GET /audit-logs?entityType=QUOTATION&limit=200
+```
+
+### User Activity
+All logs include user information, allowing you to filter client-side:
+```javascript
+const userLogs = logs.filter(log => log.userId === 'clx1a2b3c4d5e6f7g8h9i0j1');
+```
+
+## Pagination
+
+Currently, the API uses a simple limit-based approach:
+- Default limit: 50 records
+- Maximum limit: 200 records
+- Records are returned in reverse chronological order (newest first)
+
+For large datasets, consider:
+1. Using smaller date ranges (filter client-side by `createdAt`)
+2. Filtering by `entityType` or `action`
+3. Implementing cursor-based pagination for future versions
+
+## Data Retention
+
+Audit logs are permanent and cannot be deleted through the API. They are retained according to your company's data retention policy.
+
+## TypeScript Interfaces
+
+```typescript
+type AuditEntityType = 
+  | 'COMPANY'
+  | 'USER'
+  | 'CLIENT'
+  | 'QUOTATION'
+  | 'WORK_ORDER'
+  | 'RESOURCE'
+  | 'MATERIAL'
+  | 'AUTH';
+
+type AuditActionType = 
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'STATUS_CHANGE'
+  | 'ASSIGN'
+  | 'DELIVERY_CLOSE'
+  | 'PASSWORD_CHANGE'
+  | 'ROLE_CHANGE'
+  | 'SETTINGS_CHANGE'
+  | 'LOGIN';
+
+interface AuditLog {
+  id: string;
+  companyId: string;
+  entityType: AuditEntityType;
+  entityId: string;
+  action: AuditActionType;
+  before: any | null;
+  after: any | null;
+  metadata: any | null;
+  userId: string | null;
+  user?: {
+    id: string;
+    fullName: string;
+    role: UserRole;
+    email: string;
+  };
+  createdAt: string;
+}
+```
+
+## Error Responses
+
+### 403 Forbidden
+Returned when user lacks required permissions.
+
+```json
+{
+  "statusCode": 403,
+  "message": "Forbidden resource",
+  "error": "Forbidden"
+}
+```
+
+### 400 Bad Request
+Returned when invalid filters are provided.
+
+```json
+{
+  "statusCode": 400,
+  "message": "Invalid entityType. Must be one of: COMPANY, USER, CLIENT..."
+}
+```

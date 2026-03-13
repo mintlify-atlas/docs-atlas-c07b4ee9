@@ -1,0 +1,258 @@
+---
+title: 'Installation'
+description: 'Prerequisites and requirements for installing DRAIT Mini-MES'
+icon: 'download'
+---
+
+## System Requirements
+
+DRAIT Mini-MES is designed for on-premise deployment using Docker containers. Ensure your system meets the following requirements before installation.
+
+### Hardware Requirements
+
+<CardGroup cols={2}>
+  <Card title="Minimum" icon="server">
+    - 2 CPU cores
+    - 4 GB RAM
+    - 20 GB disk space
+  </Card>
+  <Card title="Recommended" icon="gauge-high">
+    - 4+ CPU cores
+    - 8 GB RAM
+    - 50 GB disk space
+  </Card>
+</CardGroup>
+
+### Software Requirements
+
+<Steps>
+  <Step title="Operating System">
+    Any Linux distribution, Windows 10/11, or macOS that supports Docker:
+    - Ubuntu 20.04+ / Debian 11+
+    - CentOS 8+ / RHEL 8+
+    - Windows 10/11 with WSL2
+    - macOS 12+
+  </Step>
+
+  <Step title="Docker Engine">
+    Docker version 24.0 or higher
+    
+    Verify your Docker installation:
+    ```bash
+    docker --version
+    ```
+    
+    Expected output: `Docker version 24.0.0` or higher
+  </Step>
+
+  <Step title="Docker Compose">
+    Docker Compose version 2.20 or higher
+    
+    Verify your Docker Compose installation:
+    ```bash
+    docker compose version
+    ```
+    
+    Expected output: `Docker Compose version v2.20.0` or higher
+  </Step>
+</Steps>
+
+<Warning>
+  **Important:** Docker Compose V2 uses the `docker compose` command (space, not hyphen). The older `docker-compose` (hyphen) command is deprecated.
+</Warning>
+
+## Installing Docker
+
+If you don't have Docker installed, follow the official installation guides:
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash
+    # Update package index
+    sudo apt-get update
+
+    # Install prerequisites
+    sudo apt-get install -y ca-certificates curl gnupg
+
+    # Add Docker's official GPG key
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+    # Set up the repository
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # Install Docker Engine
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # Verify installation
+    sudo docker run hello-world
+    ```
+  </Tab>
+
+  <Tab title="CentOS/RHEL">
+    ```bash
+    # Remove old versions
+    sudo yum remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
+
+    # Install yum-utils
+    sudo yum install -y yum-utils
+
+    # Set up the repository
+    sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+    # Install Docker Engine
+    sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # Start Docker
+    sudo systemctl start docker
+    sudo systemctl enable docker
+
+    # Verify installation
+    sudo docker run hello-world
+    ```
+  </Tab>
+
+  <Tab title="Windows">
+    1. Download [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+    2. Enable WSL2 backend during installation
+    3. Run the installer and follow the installation wizard
+    4. Restart your computer
+    5. Launch Docker Desktop
+    6. Verify installation in PowerShell:
+    ```powershell
+    docker --version
+    docker compose version
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    1. Download [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+    2. Choose the appropriate version (Intel or Apple Silicon)
+    3. Open the downloaded `.dmg` file
+    4. Drag Docker to the Applications folder
+    5. Launch Docker Desktop
+    6. Verify installation in Terminal:
+    ```bash
+    docker --version
+    docker compose version
+    ```
+  </Tab>
+</Tabs>
+
+## Post-Installation Steps
+
+### Configure Docker User Permissions (Linux)
+
+To run Docker without `sudo`, add your user to the `docker` group:
+
+```bash
+# Add current user to docker group
+sudo usermod -aG docker $USER
+
+# Apply group changes
+newgrp docker
+
+# Verify you can run docker without sudo
+docker run hello-world
+```
+
+<Note>
+  You may need to log out and log back in for the group changes to take effect.
+</Note>
+
+### Network Ports
+
+Ensure the following ports are available on your host system:
+
+| Port | Service | Configurable |
+|------|---------|-------------|
+| 80 | HTTP (Nginx) | Yes (via `HTTP_PORT`) |
+| 5432 | PostgreSQL | Yes (via `POSTGRES_PORT`) |
+
+<Warning>
+  **Security Note:** By default, the PostgreSQL port (5432) is exposed to the host. In production environments, consider removing this exposure if external database access is not required.
+</Warning>
+
+Check if ports are available:
+
+<CodeGroup>
+```bash Linux/macOS
+# Check if port 80 is in use
+sudo lsof -i :80
+
+# Check if port 5432 is in use
+sudo lsof -i :5432
+```
+
+```powershell Windows
+# Check if port 80 is in use
+Get-NetTCPConnection -LocalPort 80 -ErrorAction SilentlyContinue
+
+# Check if port 5432 is in use
+Get-NetTCPConnection -LocalPort 5432 -ErrorAction SilentlyContinue
+```
+</CodeGroup>
+
+## First-Time Setup
+
+Once Docker is installed and verified, proceed to the [Docker Setup Guide](/deployment/docker-setup) to deploy DRAIT Mini-MES.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Docker daemon not running">
+    **Linux:**
+    ```bash
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    ```
+
+    **Windows/macOS:**
+    Launch Docker Desktop from the Applications menu.
+  </Accordion>
+
+  <Accordion title="Permission denied errors (Linux)">
+    Either add your user to the docker group (recommended):
+    ```bash
+    sudo usermod -aG docker $USER
+    newgrp docker
+    ```
+
+    Or run Docker commands with `sudo` (not recommended for development).
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    If port 80 is already in use, you can change the HTTP port in the `.env` file:
+    ```bash
+    HTTP_PORT=8080
+    ```
+
+    Then access the application at `http://localhost:8080`
+  </Accordion>
+
+  <Accordion title="WSL2 not enabled (Windows)">
+    1. Open PowerShell as Administrator
+    2. Run:
+    ```powershell
+    wsl --install
+    wsl --set-default-version 2
+    ```
+    3. Restart your computer
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Setup" icon="docker" href="/deployment/docker-setup">
+    Deploy DRAIT Mini-MES using Docker Compose
+  </Card>
+  <Card title="Environment Variables" icon="code" href="/deployment/environment-variables">
+    Configure environment variables for your deployment
+  </Card>
+</CardGroup>
